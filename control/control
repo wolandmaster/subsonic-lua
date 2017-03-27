@@ -1,0 +1,8 @@
+Package: subsonic-lua
+Version: 0.0.1
+Depends: libc
+Source: https://github.com/wolandmaster/subsonic-lua
+Section: luci
+Maintainer: Sandor Balazsi <sandor.balazsi@gmail.com>
+Architecture: all
+Description: Subsonic server lua implementation
