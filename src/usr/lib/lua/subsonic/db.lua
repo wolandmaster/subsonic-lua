@@ -1,4 +1,4 @@
--- Copyright 2015-2017 Sandor Balazsi <sandor.balazsi@gmail.com>
+-- Copyright 2015-2019 Sandor Balazsi <sandor.balazsi@gmail.com>
 -- Licensed to the public under the Apache License 2.0.
 
 -- http://stackoverflow.com/a/12401713
@@ -6,7 +6,10 @@
 -- https://realtimelogic.com/ba/doc/en/lua/luasql.html
 -- https://keplerproject.github.io/luasql/manual.html
 
+require "subsonic.string"
+
 local log = require "subsonic.log"
+local fs = require "subsonic.fs"
 local driver = require "luasql.sqlite3"
 
 local db = {}
@@ -22,8 +25,26 @@ getmetatable("").__mod = function(str, values)
 	return type(values) == "table" and str:format(unpack(values)) or str:format(values)
 end
 
+local function escape(self, value)
+	if type(value) == "table" then
+		local escaped_value = {}
+		for _, value in ipairs(value) do
+			table.insert(escaped_value, self:escape(value))
+		end
+		return escaped_value
+	elseif type(value) == "string" and value ~= "null" then
+		return "'" .. self.conn:escape(value) .. "'"
+	else
+		return value
+	end
+end
+
+-------------------------
+-- P U B L I C   A P I --
+-------------------------
 function db.new(sqlite)
 	local self = setmetatable({}, db)
+	log.debug("open db:", sqlite)
 	self.env = assert(driver.sqlite3())
 	self.conn = assert(self.env:connect(sqlite))
 	return self
@@ -34,7 +55,7 @@ function db.execute(self, sql, filters)
 	if sql:find("select") or sql:find("delete") or sql:find("update") then
 		sql = sql .. self:build_filters(filters or {})
 	end
-	log.debug("executing sql: " .. sql)
+	log.debug("sql execute:", sql)
 	return assert(self.conn:execute(sql))
 end
 
@@ -45,14 +66,24 @@ function db.rows(self, sql, filters)
 	end
 end
 
+function db.query_first(self, sql, filters)
+	local cursor = self:execute(sql, filters)
+	local row = cursor:fetch({}, "a")
+	log.debug("sql query row:", row or "nil")
+	cursor:close()
+	return row
+end
+
 function db.query(self, sql, filters)
 	local rows = {}
 	local cursor = self:execute(sql, filters)
 	local row = cursor:fetch({}, "a")
 	while row do
 		table.insert(rows, row)
+		log.debug("sql query row:", row)
 		row = cursor:fetch({}, "a")
 	end
+	cursor:close()
 	return rows
 end
 
@@ -60,19 +91,25 @@ function db.insert(self, table_name, values)
 	local column_list, value_list = {}, {}
 	for column, value in pairs(values) do
 		table.insert(column_list, column)
-		table.insert(value_list, self:escape(value))
+		table.insert(value_list, escape(self, value))
 	end
 	self:execute("\tinsert into %s (%s)\n\tvalues (%s)" % { 
 		table_name,
 		table.concat(column_list, ", "),
 		table.concat(value_list, ", ")
 	})
+	local cursor = self:execute("select * from " .. table_name
+		.. " where id = last_insert_rowid()")
+	local last_row = cursor:fetch({}, "a")
+	log.debug("sql last inserted row:", last_row)
+	cursor:close()
+	return last_row
 end
 
 function db.update(self, table_name, values, filters)
 	local updates = {} 
 	for column, value in pairs(values) do
-		table.insert(updates, column .. " = " .. self:escape(value))
+		table.insert(updates, column .. " = " .. escape(self, value))
 	end
 	self:execute("update %s set %s" % {
 		table_name,
@@ -83,32 +120,23 @@ end
 function db.close(self)
 	self.conn:close()
 	self.env:close()
-end
-
-function db.escape(self, values)
-	if type(values) == "table" then
-		local escaped_values = {}
-		for _, value in ipairs(values) do
-			table.insert(escaped_values, self:escape(value))
-		end
-		return escaped_values
-	elseif type(values) == "string" and values ~= "null" then
-		return "'" .. self.conn:escape(values) .. "'"
-	else
-		return values
-	end
+	log.debug("close db")
 end
 
 function db.build_filters(self, filters)
 	local sql = ""
-	for column, values in pairs(filters) do
+	for column, value in pairs(filters) do
 		sql = sql .. (sql:find("where") and " and " or " where ") .. column
-		if type(values) == "table" then
-			sql = sql .. " in (" .. table.concat(self:escape(values), ", ") .. ")"
-		elseif values == "null" then
-			sql = sql .. " is " .. values
+		if type(value) == "table" then
+			if value[1]:starts("<") or value[1]:starts(">") then
+				sql = sql .. " " .. value[1] .. " " .. escape(self, value[2])
+			else
+				sql = sql .. " in (" .. table.concat(escape(self, value), ", ") .. ")"
+			end
+		elseif value == "null" then
+			sql = sql .. " is " .. value
 		else
-			sql = sql .. " = " .. self:escape(values)
+			sql = sql .. " = " .. escape(self, value)
 		end
 	end
 	return sql

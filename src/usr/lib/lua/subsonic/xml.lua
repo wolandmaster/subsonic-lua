@@ -1,5 +1,7 @@
--- Copyright 2015-2017 Sandor Balazsi <sandor.balazsi@gmail.com>
+-- Copyright 2015-2019 Sandor Balazsi <sandor.balazsi@gmail.com>
 -- Licensed to the public under the Apache License 2.0.
+
+require "subsonic.table"
 
 local xml = {}
 xml.__index = xml
@@ -10,11 +12,31 @@ setmetatable(xml, {
 	end,
 })
 
+local function escape(str)
+	return str:gsub("(.)", {
+		["<"] = "&lt;",
+		[">"] = "&gt;",
+		["&"] = "&amp;",
+		["'"] = "&apos;",
+		['"'] = "&quot;"
+	})
+end
+
+-------------------------
+-- P U B L I C   A P I --
+-------------------------
 function xml.new(tag_name, attrs)
 	local self = setmetatable({}, xml)
 	self.tag_name = tag_name
 	self.attrs = attrs or {}
 	self.children = {}
+	return self
+end
+
+function xml.attr(self, attrs)
+	for key, value in pairs(attrs) do
+		self.attrs[key] = value
+	end
 	return self
 end
 
@@ -25,22 +47,22 @@ function xml.child(self, tag_name, attrs)
 	return child
 end
 
-function xml.sibling(self, tag_name, attrs)
-	return xml.child(self.ancestor ~= nil and self.ancestor or self, tag_name, attrs)
-end
+-- function xml.sibling(self, tag_name, attrs)
+--	return xml.child(self.ancestor ~= nil and self.ancestor or self, tag_name, attrs)
+-- end
 
-function xml.parent(self)
-	assert(self.ancestor, "no parent exists")
-	return self.ancestor
-end
+-- function xml.parent(self)
+--	assert(self.ancestor, "no parent exists")
+--	return self.ancestor
+-- end
 
-function xml.root(self)
-	return self.ancestor ~= nil and xml.root(self.ancestor) or self
-end
+-- function xml.root(self)
+-- return self.ancestor ~= nil and xml.root(self.ancestor) or self
+-- end
 
 function xml.build(self)
 	local tag = '<' .. self.tag_name
-	for key, value in pairs(self.attrs) do
+	for key, value in table.spairs(self.attrs) do
 		tag = tag .. ' ' .. key .. '="' .. escape(tostring(value)) .. '"'
 	end
 	if next(self.children) == nil then
@@ -55,16 +77,9 @@ function xml.build(self)
 	return tag
 end
 
-function xml.build_root(self)
-	return self:root():build()
-end
-
-function escape(str)
-	return str:gsub("(.)", {
-		["<"] = "&lt;", [">"] = "&gt;", ["&"] = "&amp;",
-		["'"] = "&apos;", ['"'] = "&quot;"
-	})
-end
+-- function xml.build_root(self)
+--	return self:root():build()
+-- end
 
 return xml
 

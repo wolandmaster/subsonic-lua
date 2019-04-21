@@ -1,10 +1,10 @@
--- Copyright 2015-2017 Sandor Balazsi <sandor.balazsi@gmail.com>
+-- Copyright 2015-2019 Sandor Balazsi <sandor.balazsi@gmail.com>
 -- Licensed to the public under the Apache License 2.0.
 
 -- Only supports ID3v2.3 and ID3v2.4 tags!
 
-local log = require "subsonic.log"
 local nixio = require "nixio"
+local log = require "subsonic.log"
 
 local bor = nixio.bit.bor
 local band = nixio.bit.band
@@ -104,7 +104,7 @@ function id3.parse_v2(self)
 	end
 end
 
---[[ P R I V A T E ]]--
+-- P R I V A T E --
 
 function read_byte(fd)
 	return string.byte(fd:read(1))

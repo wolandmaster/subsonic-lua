@@ -1,9 +1,9 @@
--- Copyright 2015-2017 Sandor Balazsi <sandor.balazsi@gmail.com>
+-- Copyright 2015-2019 Sandor Balazsi <sandor.balazsi@gmail.com>
 -- Licensed to the public under the Apache License 2.0.
 
-local fs = require "subsonic.fs"
-local log = require "subsonic.log"
 local nixio = require "nixio"
+local log = require "subsonic.log"
+local fs = require "subsonic.fs"
 
 local io = io
 
@@ -14,7 +14,7 @@ function send_xml(msg, status)
 	io.write(
 		'Status: 200 OK\r\n' ..
 		'Content-Type: application/xml\r\n\r\n' ..
-		'<?xml version="1.0" encoding="UTF-8"?>\n' ..
+		'<?xml version="1.0" encoding="UTF-8"?>\r\n' ..
 		'<subsonic-response status="' .. status .. '" version="1.14.0">' .. msg .. '</subsonic-response>'
 	)
 	io.flush()

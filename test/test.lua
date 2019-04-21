@@ -4,16 +4,25 @@
 local nixio = require "nixio"
 
 local print, ipairs, pairs, math, table = print, ipairs, pairs, math, table
-local io, tostring, type = io, tostring, type
+local io, os, tostring, type, arg = io, os, tostring, type, arg
 
 module "test"
 
-local red = function(s) return "\27[31m" .. s .. "\27[0m" end
-local green = function(s) return "\27[32m" .. s .. "\27[0m" end
+function red(str) return "\27[31m" .. str .. "\27[0m" end
+function green(str) return "\27[32m" .. str .. "\27[0m" end
+function cyan(str) return "\27[36m" .. str .. "\27[0m" end
 
-function assert_equals(actual, expected)
-	print("expected: '" .. tostring(expected) .. "': " .. (actual == expected and green("passed")
-		or red("failed") .. "\n  actual: '" .. tostring(actual) .. "'"))
+function assert_equals(id, actual, expected)
+	io.write('  ' .. id .. ': ')
+	if actual == expected then
+		print(green("passed"))
+		return true
+	else
+		print(red("failed")
+		.. "\n" .. cyan("expected:") .. " '" .. tostring(expected) .. "'"
+		.. "\n" .. cyan("actual:  ") .. " '" .. tostring(actual) .. "'")
+		return false
+	end
 end
 
 function open(file)

@@ -1,14 +1,18 @@
--- Copyright 2015-2017 Sandor Balazsi <sandor.balazsi@gmail.com>
+-- Copyright 2015-2019 Sandor Balazsi <sandor.balazsi@gmail.com>
 -- Licensed to the public under the Apache License 2.0.
+
+require "subsonic.table"
 
 local nixio = require "nixio"
 
-local table = table
+local table, coroutine = table, coroutine
 
 module "subsonic.fs"
 
 function join_path(...)
-	return (table.concat({...}, "/"):gsub("/+", "/"))
+	return table.concat(table.ifilter({...}, function(value)
+		return value ~= ""
+	end), "/"):gsub("/+", "/")
 end
 
 function basename(path)
@@ -19,8 +23,12 @@ function dirname(path)
 	return path:gsub("(.*)(/.*)", "%1")
 end
 
-function suffix(path)
+function extension(path)
 	return path:gsub("(.*%.)(.*)", "%2")
+end
+
+function no_extension(path)
+	return path:gsub("(.*)(%..*)", "%1")
 end
 
 function path_type(path)
@@ -35,20 +43,34 @@ function is_file(...)
 	return path_type(join_path(...)) == "reg"
 end
 
-function iterate_folder(path)
-	local iter = nixio.fs.dir(path)
+function iterate_folder(base, path)
+	local iter = nixio.fs.dir(join_path(base, path))
 	return function()
 		local entry = iter()
 		return entry and join_path(path, entry)
 	end
 end
 
+function iterate_files_recursive(path)
+	local function walk(path)
+		for entry in nixio.fs.dir(path) do
+			local subpath = join_path(path, entry)
+			if is_dir(subpath) then
+				walk(subpath)
+			else
+				coroutine.yield(subpath)
+			end
+		end
+	end
+	return coroutine.wrap(function() walk(path) end)
+end
+
 function file_size(...)
 	return nixio.fs.stat(join_path(...), "size")
 end
 
-function inode(path)
-	return nixio.fs.stat(path, "ino")
+function inode(...)
+	return nixio.fs.stat(join_path(...), "ino")
 end
 
 function last_modification(...)
