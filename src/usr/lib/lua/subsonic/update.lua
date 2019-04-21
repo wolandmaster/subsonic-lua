@@ -6,8 +6,6 @@ local database = require "subsonic.db"
 local log = require "subsonic.log"
 local fs = require "subsonic.fs"
 
-local lu = require "luci.util"
-
 -- local script = fs.basename(debug.getinfo(1, 'S').source)
 
 -----------------
@@ -17,8 +15,8 @@ local function create_table_music_directory(db)
 	db:execute([[
 		create table music_directory(
 			id integer primary key not null unique,
-			music_folder_id integer not null,
 			parent_id integer not null,
+			music_folder_id integer not null,
 			name text not null,
 			mtime integer not null
 		)
@@ -53,6 +51,7 @@ local function create_table_song(db)
 	db:execute([[
 		create table song(
 			id integer primary key not null unique,
+			music_folder_id integer not null,
 			music_directory_id integer not null,
 			path text not null,
 			title text not null,
@@ -104,8 +103,9 @@ end
 local function add_music_directory(music_folder, path, parent_id, db)
 	return db:insert("music_directory", {
 		parent_id = parent_id,
-		name = fs.basename(path):gsub("_", " "),
-		mtime = fs.last_modification(base, path)
+		music_folder_id = music_folder[".index"],
+		name = fs.basename(path):gsub("[_-]", " "),
+		mtime = fs.last_modification(music_folder.path, path)
 	})
 end
 
@@ -118,20 +118,28 @@ end
 local function add_album()
 end
 
-local function add_song(base, path, music_directory_id, db)
+local function add_song(music_folder, path, music_directory_id, db)
 	db:execute("begin transaction")
-	local song = db:query_first("select * from song", { path = path })
+	local song = db:query_first("select * from song",
+		{ path = path, music_folder_id = music_folder[".index"] })
 	if not song then
 		song = db:insert("song", {
+			music_folder_id = music_folder[".index"],
 			music_directory_id = music_directory_id,
 			path = path,
-			title = fs.no_extension(fs.basename(path)),
+			title = fs.no_extension(fs.basename(path)):gsub("[_-]", " "),
 			mtime = 0,
-			size = fs.file_size(base, name)
+			size = fs.file_size(music_folder.path, path)
 		})
 	end
-	log.debug("song:", song)
-
+	if fs.last_modification(music_folder.path, path) > song.mtime then
+		local updates = {
+			mtime = fs.last_modification(music_folder.path, path)
+		}
+		-- local meta = metadata.read(music_folder.path, path)
+		db:update("song", updates, { id = song.id })
+		-- TODO: update the mtime of all above music directory?
+	end
 	db:execute("commit")
 end
 
@@ -139,10 +147,11 @@ local function process(music_folder, path, parent_id, db)
 	for subpath in fs.iterate_folder(music_folder.path, path) do
 		if fs.is_dir(music_folder.path, subpath) then
 			local id = add_music_directory(music_folder, subpath, parent_id, db).id
+			-- TODO: skip processing folder when no mtime change?
 			process(music_folder, subpath, id, db)
 		elseif metadata.is_media(music_folder.path, subpath) then
 			log.info("process song:", subpath)
-			-- add_song(base, subpath, parent_id, db)
+			add_song(music_folder, subpath, parent_id, db)
 		end
 	end
 end

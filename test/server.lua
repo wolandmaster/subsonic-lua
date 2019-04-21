@@ -65,13 +65,13 @@ config.set_db('test/resources/subsonic.db')
 config.set_music_folders({
 	{ name = 'Music', enabled = '1' }
 })
-assert_equals("get indexes", test_server("getIndexes"),
+assert_equals("get indexes", test_server("getIndexes", "&musicFolderId=1"),
 	xml_200_ok('<indexes lastModified="1555571361">'
 	.. '<index name="A">'
-	.. '<artist id="1" name="Artist"/>'
+	.. '<artist id="1" name="Artist"/></index>'
 	.. '<child id="1" isDir="false" parent="0" path="Song1.mp3"'
 	.. ' size="0" suffix="mp3" title="Song1"/>'
-	.. '</index></indexes>'))
+	.. '</indexes>'))
 
 -- getMusicDirectory.view?u=user&p=enc:123456789a&v=1.2.0&c=android&id=1
 config.set_music_folders({ { name = 'Music', enabled = '1' } })

@@ -27,8 +27,8 @@ local VIDEO = {
 	mpg = "video/mpg", mpeg = "video/mpg"
 }
 
-function is_media(file)
-	local extension = fs.extension(file)
+function is_media(...)
+	local extension = fs.extension(fs.join_path(...))
 	return AUDIO[extension] or VIDEO[extension]
 end
 
