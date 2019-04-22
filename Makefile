@@ -2,8 +2,6 @@ NAME = subsonic-lua
 
 .PHONY: control
 
-.EXPORT_ALL_VARIABLES:
-
 all: test
 
 test-remove:
@@ -20,5 +18,6 @@ test: test-deploy
 	lua test/xml.lua
 	lua test/id3.lua
 	lua test/mpeg.lua
+	lua test/response.lua
 	lua test/server.lua
 

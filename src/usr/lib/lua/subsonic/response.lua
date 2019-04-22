@@ -5,29 +5,53 @@ local nixio = require "nixio"
 local log = require "subsonic.log"
 local fs = require "subsonic.fs"
 
-local io = io
+local io, table = io, table
 
 module "subsonic.response"
+
+local SUBSONIC_API_VERSION = "1.0.0"
+
+-------------------------
+-- P U B L I C   A P I --
+-------------------------
+function http_200_ok(content_type, headers)
+	headers = headers and table.concat(headers, "\r\n") or ""
+	if headers ~= "" then headers = headers .. "\r\n" end
+	return "Status: 200 OK\r\n"
+	.. "Access-Control-Allow-Origin: *\r\n"
+	.. "Content-Type: " .. content_type .. "\r\n"
+	.. headers .. "\r\n"
+end
+
+function subsonic_api_version()
+	return SUBSONIC_API_VERSION
+end
 
 function send_xml(msg, status)
 	msg = msg or ""
 	status = status or "ok"
 	log.debug("send xml:", msg)
-	io.write(
-		'Status: 200 OK\r\n' ..
-		'Content-Type: application/xml\r\n\r\n' ..
-		'<?xml version="1.0" encoding="UTF-8"?>\r\n' ..
-		'<subsonic-response status="' .. status .. '" version="1.14.0">' .. msg .. '</subsonic-response>'
-	)
+	io.write(http_200_ok("application/xml")
+	.. '<?xml version="1.0" encoding="UTF-8"?>\r\n'
+	.. '<subsonic-response status="' .. status .. '" version="'
+	.. SUBSONIC_API_VERSION .. '">' .. msg .. '</subsonic-response>')
+	io.flush()
+end
+
+function send_json(msg, status)
+	msg = msg and "," .. msg or ""
+	status = status or "ok"
+	log.debug("send json:", msg)
+	io.write(http_200_ok("application/json")
+	.. 'Content-Type: application/json\r\n\r\n'
+	.. '{"subsonic-response":{"status":"' .. status .. '","version":"'
+	.. SUBSONIC_API_VERSION .. '"' .. msg .. '}}')
 	io.flush()
 end
 
 function send_binary(data)
-	io.write(
-		'Status: 200 OK\r\n' ..
-		'Content-Length: ' .. data:len() .. '\r\n' ..
-		'Content-Type: application/octet-stream\r\n\r\n'
-	)
+	io.write(http_200_ok("application/octet-stream",
+		{ "Content-Length: " .. data:len() }))
 	io.write(data)
 	io.flush()
 end
@@ -36,11 +60,8 @@ function send_file(...)
 	local file = fs.join_path(...)
 	local fh = nixio.open(file, 'r')
 	log.debug("send file:", file)
-	io.write(
-		'Status: 200 OK\r\n' ..
-		'Content-Length: ' .. fs.file_size(file) .. '\r\n' ..
-		'Content-Type: application/octet-stream\r\n\r\n'
-	)
+	io.write(http_200_ok("application/octet-stream",
+		{ "Content-Length: " .. fs.file_size(file) }))
 	repeat
 		local buf = fh:read(2^13)	-- 8k
 		io.write(buf)

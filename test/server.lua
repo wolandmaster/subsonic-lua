@@ -9,6 +9,7 @@ local test = require "test"
 
 config = require "config_stub"
 local server = require "subsonic.server"
+local response = require "subsonic.response"
 
 function test_server(method, query)
 	config.set_log_file(os.tmpname())
@@ -28,10 +29,9 @@ function test_server(method, query)
 end
 
 function xml_200_ok(msg)
-	return 'Status: 200 OK\r\n'
-	.. 'Content-Type: application/xml\r\n\r\n'
+	return response.http_200_ok("application/xml")
 	.. '<?xml version="1.0" encoding="UTF-8"?>\r\n'
-	.. '<subsonic-response status="ok" version="1.14.0">'
+	.. '<subsonic-response status="ok" version="' .. response.subsonic_api_version() .. '">'
 	.. (msg or "") .. '</subsonic-response>'
 end
 

@@ -3,7 +3,6 @@
 
 package.path = package.path .. ";./test/?.lua"
 
-local log = require "subsonic.log"
 local mpeg = require "subsonic.mpeg"
 local test = require "test"
 

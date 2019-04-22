@@ -39,20 +39,22 @@ local function build_song_child(song)
 		-- year =
 	}
 end
---	.. '<child album="Album-ID3" artist="Artist-ID3" bitRate="128" contentType="audio/mpeg" '
---	.. 'coverArt="1" duration="1" genre="Other" id="2" isDir="false" parent="3" '
---	.. 'path="Artist/Album/CD1/Song4.mp3" size="1234" suffix="mp3" title="Song4-ID3" track="1" year="1982"/>'
 
 -- TODO: json
 -- /rest/ping.view?f=json
 -- {"subsonic-response":{"status":"ok","version":"1.16.0","type":"funkwhale","funkwhaleVersion":"0.18.3+git.a414461f"}}
--- https://github.com/ultrasonic/ultrasonic/tree/master/subsonic-api/src/integrationTest/resources;
+-- https://github.com/ultrasonic/ultrasonic/tree/master/subsonic-api/src/integrationTest/resources
 
 -------------------------
 -- P U B L I C   A P I --
 -------------------------
 function ping(qs)
-	response.send_xml()
+	local format = qs.f or "xml"
+	if format == "xml" then
+		response.send_xml()
+	elseif format == "json" then
+		response.send_json()		
+	end
 end
 
 function get_license(qs)
