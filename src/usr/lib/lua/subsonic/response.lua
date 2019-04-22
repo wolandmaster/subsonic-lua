@@ -10,7 +10,9 @@ local io = io
 module "subsonic.response"
 
 function send_xml(msg, status)
+	msg = msg or ""
 	status = status or "ok"
+	log.debug("send xml:", msg)
 	io.write(
 		'Status: 200 OK\r\n' ..
 		'Content-Type: application/xml\r\n\r\n' ..
@@ -33,6 +35,7 @@ end
 function send_file(...)
 	local file = fs.join_path(...)
 	local fh = nixio.open(file, 'r')
+	log.debug("send file:", file)
 	io.write(
 		'Status: 200 OK\r\n' ..
 		'Content-Length: ' .. fs.file_size(file) .. '\r\n' ..

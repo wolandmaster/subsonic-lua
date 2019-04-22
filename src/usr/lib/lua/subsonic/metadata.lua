@@ -32,6 +32,10 @@ function is_media(...)
 	return AUDIO[extension] or VIDEO[extension]
 end
 
+function content_type(...)
+	return is_media(...) or "application/octet-stream"
+end
+
 function read(...)
 	local path = fs.join_path(...)
 	local metadata = {}

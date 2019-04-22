@@ -27,18 +27,36 @@ local function build_song_child(song)
 		isDir = false,
 		path = song.path,
 		size = song.size,
-		suffix = fs.extension(song.path)
+		suffix = fs.extension(song.path),
+		contentType = metadata.content_type(song.path)
+		-- album =
+		-- artist =
+		-- bitRate =
+		-- coverArt =
+		-- duration =
+		-- genre =
+		-- track =
+		-- year =
 	}
 end
+--	.. '<child album="Album-ID3" artist="Artist-ID3" bitRate="128" contentType="audio/mpeg" '
+--	.. 'coverArt="1" duration="1" genre="Other" id="2" isDir="false" parent="3" '
+--	.. 'path="Artist/Album/CD1/Song4.mp3" size="1234" suffix="mp3" title="Song4-ID3" track="1" year="1982"/>'
+
+-- TODO: json
+-- /rest/ping.view?f=json
+-- {"subsonic-response":{"status":"ok","version":"1.16.0","type":"funkwhale","funkwhaleVersion":"0.18.3+git.a414461f"}}
+-- https://github.com/ultrasonic/ultrasonic/tree/master/subsonic-api/src/integrationTest/resources;
 
 -------------------------
 -- P U B L I C   A P I --
 -------------------------
 function ping(qs)
+	response.send_xml()
 end
 
 function get_license(qs)
-	return xml("license", { valid = "true" }):build()
+	response.send_xml(xml("license", { valid = "true" }):build())
 end
 
 function get_music_folders(qs)
@@ -51,7 +69,7 @@ function get_music_folders(qs)
 			})
 		end
 	end
-	return music_folders_xml:build()
+	response.send_xml(music_folders_xml:build())
 end
 
 function get_indexes(qs)
@@ -75,7 +93,8 @@ function get_indexes(qs)
 
 	if next(artists) == nil and next(songs) == nil then
 		log.info("no index change since " .. modified_since)
-		return ""
+		response.send_xml()
+		return
 	end
 	local current_index
 	local current_index_xml
@@ -99,7 +118,7 @@ function get_indexes(qs)
 		if song.mtime > last_modified then last_modified = song.mtime end
 		indexes_xml:child("child", build_song_child(song))
 	end
-	return indexes_xml:attr({ lastModified = last_modified }):build()
+	response.send_xml(indexes_xml:attr({ lastModified = last_modified }):build())
 end
 
 function get_music_directory(qs)
@@ -131,10 +150,15 @@ function get_music_directory(qs)
 	for _, song in ipairs(songs) do
 		 directory_xml:child("child", build_song_child(song))
 	end
-	return directory_xml:build()
+	response.send_xml(directory_xml:build())
 end
 
 function stream(qs)
+	local db = database(config.db())
+	local song = db:query_first("select * from song", { id = tonumber(qs.id) })
+	local music_folder = config.music_folders()[song.music_folder_id]
+	db:close()
+	response.send_file(music_folder.path, song.path)
 end
 
 function get_random_songs(qs)

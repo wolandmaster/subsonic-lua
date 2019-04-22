@@ -26,12 +26,10 @@ end
 function run()
 	log.open(config.log_file(), config.log_level())
 	log.info("request: " .. os.getenv("REQUEST_URI"))
-	local subsonic_method = os.getenv("PATH_INFO"):sub(7, -6)
+	local subsonic_method = os.getenv("PATH_INFO"):gsub("%.view$", ""):sub(7)
 	local method = subsonic_method:gsub("(%u)", function(s) return "_" .. s:lower() end)
 	if rest[method] then
-		local answer = rest[method](get_query_string()) or ""
-		log.info("response: " .. answer)
-		response.send_xml(answer)
+		rest[method](get_query_string())
 	end
 	log.close()
 end

@@ -69,7 +69,7 @@ assert_equals("get indexes", test_server("getIndexes", "&musicFolderId=1"),
 	xml_200_ok('<indexes lastModified="1555571361">'
 	.. '<index name="A">'
 	.. '<artist id="1" name="Artist"/></index>'
-	.. '<child id="1" isDir="false" parent="0" path="Song1.mp3"'
+	.. '<child contentType="audio/mpeg" id="1" isDir="false" parent="0" path="Song1.mp3"'
 	.. ' size="0" suffix="mp3" title="Song1"/>'
 	.. '</indexes>'))
 
@@ -78,14 +78,14 @@ config.set_music_folders({ { name = 'Music', enabled = '1' } })
 config.set_db('test/resources/subsonic.db')
 assert_equals("get music directory 1", test_server("getMusicDirectory", "&id=3"),
 	xml_200_ok('<directory id="3" name="CD1" parent="2">'
-	.. '<child id="3" isDir="false" parent="3" path="Artist/Album/CD1/Song4.mp3"'
-	.. ' size="0" suffix="mp3" title="Song4"/>'
+	.. '<child contentType="audio/mpeg" id="3" isDir="false" parent="3"'
+	.. ' path="Artist/Album/CD1/Song4.mp3" size="0" suffix="mp3" title="Song4"/>'
 	.. '</directory>'))
 assert_equals("get music directory 2", test_server("getMusicDirectory", "&id=1"),
 	xml_200_ok('<directory id="1" name="Artist" parent="0">'
 	.. '<child artist="Artist" id="2" isDir="true" parent="1" title="Album"/>'
-	.. '<child id="4" isDir="false" parent="1" path="Artist/Song2.mp3"'
-	.. ' size="0" suffix="mp3" title="Song2"/>'
+	.. '<child contentType="audio/mpeg" id="4" isDir="false" parent="1"'
+	.. ' path="Artist/Song2.mp3" size="0" suffix="mp3" title="Song2"/>'
 	.. '</directory>'))
 
 -- config.set_db('test/resources/subsonic-id3.db')
