@@ -58,7 +58,8 @@ function ping(qs)
 end
 
 function get_license(qs)
-	response.send_xml(xml("license", { valid = "true" }):build())
+	local resp = { license = { valid = true } }
+	response.send_xml(response.to_xml(resp))
 end
 
 function get_music_folders(qs)
@@ -86,8 +87,8 @@ function get_indexes(qs)
 		music_directory_id = 0, mtime = { ">", modified_since }
 	}
 	if music_folder_id ~= 0 then
-		artist_filter["music_folder_id"] = music_folder_id
-		song_filter["music_folder_id"] = music_folder_id
+		artist_filter.music_folder_id = music_folder_id
+		song_filter.music_folder_id = music_folder_id
 	end
 	local artists = db:query("select * from music_directory", artist_filter)
 	local songs = db:query("select * from song", song_filter)
@@ -122,7 +123,7 @@ function get_indexes(qs)
 		if song.mtime > last_modified then last_modified = song.mtime end
 		table.insert(resp.indexes, { child = build_song_child(song) })
 	end
-	resp.indexes["lastModified"] = last_modified
+	resp.indexes.lastModified = last_modified
 	response.send_xml(response.to_xml(resp))
 end
 
@@ -136,26 +137,26 @@ function get_music_directory(qs)
 		{ music_directory_id = tonumber(qs.id) })
 	db:close()
 	
-	local directory_xml = xml("directory", {
+	local resp = { directory = {
 		id = directory.id,
 		parent = directory.parent_id,
 		name = directory.name
-	})
+	} }
 	table.sort(subfolders, function(left, right) return left.name < right.name end)
 	for _, subfolder in ipairs(subfolders) do
-		 directory_xml:child("child", {
+		table.insert(resp.directory, { child = {
 			id = subfolder.id,
 			parent = subfolder.parent_id,
 			title = subfolder.name,
 			isDir = true,
 			artist = directory.name
-		})
+		}  })
 	end
 	table.sort(songs, function(left, right) return left.title < right.title end)
 	for _, song in ipairs(songs) do
-		 directory_xml:child("child", build_song_child(song))
+		table.insert(resp.directory, { child = build_song_child(song) })
 	end
-	response.send_xml(directory_xml:build())
+	response.send_xml(response.to_xml(resp))
 end
 
 function stream(qs)
