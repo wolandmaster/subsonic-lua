@@ -1,11 +1,13 @@
 -- Copyright 2015-2019 Sandor Balazsi <sandor.balazsi@gmail.com>
 -- Licensed to the public under the Apache License 2.0.
 
+require "subsonic.table"
+
 local nixio = require "nixio"
 local log = require "subsonic.log"
 local fs = require "subsonic.fs"
 
-local io, table = io, table
+local io, table, pairs, type, tostring = io, table, pairs, type, tostring
 
 module "subsonic.response"
 
@@ -14,6 +16,10 @@ local SUBSONIC_API_VERSION = "1.0.0"
 -------------------------
 -- P U B L I C   A P I --
 -------------------------
+function subsonic_api_version()
+	return SUBSONIC_API_VERSION
+end
+
 function http_200_ok(content_type, headers)
 	headers = headers and table.concat(headers, "\r\n") or ""
 	if headers ~= "" then headers = headers .. "\r\n" end
@@ -23,8 +29,23 @@ function http_200_ok(content_type, headers)
 	.. headers .. "\r\n"
 end
 
-function subsonic_api_version()
-	return SUBSONIC_API_VERSION
+function to_xml(array)
+	local xml = ""
+	for key, value in table.spairs(array, table.compare_mixed) do
+		if type(value) == "table" then
+			if type(key) == "string" then
+				xml = xml .. "<" .. key .. to_xml(value)
+				.. (value[1] and "</" .. key .. ">" or "/>")
+			elseif key == 1 then
+				xml = xml .. ">" .. to_xml(value)
+			else
+				xml = xml .. to_xml(value)
+			end
+		else
+			xml = xml .. " " .. key .. '="' .. tostring(value) .. '"'
+		end
+	end
+	return xml
 end
 
 function send_xml(msg, status)

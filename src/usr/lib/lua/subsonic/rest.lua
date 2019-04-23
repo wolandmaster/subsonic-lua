@@ -62,16 +62,16 @@ function get_license(qs)
 end
 
 function get_music_folders(qs)
-	local music_folders_xml = xml("musicFolders")
+	local resp = { musicFolders = {} }
 	for index, music_folder in ipairs(config.music_folders()) do
 		if music_folder.enabled == '1' then
-			music_folders_xml:child("musicFolder", {
+			table.insert(resp.musicFolders, { musicFolder = {
 				id = index,
 				name = music_folder.name
-			})
+			} })
 		end
 	end
-	response.send_xml(music_folders_xml:build())
+	response.send_xml(response.to_xml(resp))
 end
 
 function get_indexes(qs)
@@ -98,29 +98,32 @@ function get_indexes(qs)
 		response.send_xml()
 		return
 	end
-	local current_index
-	local current_index_xml
-	local last_modified = 0
-	local indexes_xml = xml("indexes")
+
+	local resp = { indexes = {} }
+	local current_index = {}
+	local current_index_initial
+	local last_modified = 0	
 	table.sort(artists, function(left, right) return left.name < right.name end)
 	for _, artist in ipairs(artists) do
-		local index = artist.name:sub(1, 1)
-		if index ~= current_index then
-			current_index = index
-			current_index_xml = indexes_xml:child("index", { name = index })
+		local index_initial = artist.name:sub(1, 1):upper()
+		if index_initial ~= current_index_initial then
+			current_index_initial = index_initial
+			table.insert(resp.indexes, { index = { name = index_initial } })
+			current_index = resp.indexes[#resp.indexes].index
 		end
-		if artist.mtime > last_modified then last_modified = artist.mtime end
-		current_index_xml:child("artist", {
+		table.insert(current_index, { artist = {
 			id = artist.id,
 			name = artist.name
-		})
+		} })
+		if artist.mtime > last_modified then last_modified = artist.mtime end
 	end
 	table.sort(songs, function(left, right) return left.title < right.title end)
 	for _, song in ipairs(songs) do
 		if song.mtime > last_modified then last_modified = song.mtime end
-		indexes_xml:child("child", build_song_child(song))
+		table.insert(resp.indexes, { child = build_song_child(song) })
 	end
-	response.send_xml(indexes_xml:attr({ lastModified = last_modified }):build())
+	resp.indexes["lastModified"] = last_modified
+	response.send_xml(response.to_xml(resp))
 end
 
 function get_music_directory(qs)

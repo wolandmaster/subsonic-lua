@@ -51,6 +51,15 @@ function table.spairs(array, order)
 	return iter
 end
 
+function table.compare_mixed(left, right)
+	local left_type, right_type = type(left), type(right)
+	if left_type ~= right_type then
+		return left_type > right_type
+	else
+		return left < right
+	end
+end
+
 function table.dump(array)
 	if type(array) == "table" then
 		local str = "{ "
