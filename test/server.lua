@@ -3,11 +3,11 @@
 
 package.path = package.path .. ";./test/?.lua"
 
+config = require "config_stub"
+
 local nixio = require "nixio"
 local nixiofs = require "nixio.fs"
 local test = require "test"
-
-config = require "config_stub"
 local server = require "subsonic.server"
 local response = require "subsonic.response"
 

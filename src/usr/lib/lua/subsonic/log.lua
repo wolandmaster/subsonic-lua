@@ -28,10 +28,10 @@ end
 
 function message(loglevel, ...)
 	if fh == nil then
-		open("/dev/tty", "info")
+		open("/dev/tty", "debug")
 	end
 	if LEVEL[loglevel] <= LEVEL[level] then
-		fh:lock("lock")		
+		fh:lock("lock")
 		fh:write(os.date("%Y-%m-%d %H:%M:%S ")
 			.. ("%-6s"):format(loglevel)
 			.. table.concat(table.map({...}, function(value)

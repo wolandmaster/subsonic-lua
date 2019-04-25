@@ -15,7 +15,6 @@ test-deploy: test-remove
 
 test: test-deploy
 	lua test/fs.lua
-	lua test/xml.lua
 	lua test/id3.lua
 	lua test/mpeg.lua
 	lua test/response.lua

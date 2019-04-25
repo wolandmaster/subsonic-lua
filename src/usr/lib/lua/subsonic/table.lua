@@ -67,7 +67,7 @@ function table.dump(array)
 			if type(key) ~= "number" then key = '"' .. key .. '"' end
 			str = str .. "[" .. key .. "] = " .. table.dump(value) .. ", "
 		end
-		return str:gsub(", $", " ") .. "} "
+		return str:gsub(", $", "") .. "} "
 	else
 		if type(array) == "number" then
 			return tostring(array)

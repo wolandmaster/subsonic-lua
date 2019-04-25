@@ -12,24 +12,28 @@ local lshift = nixio.bit.lshift
 local rshift = nixio.bit.rshift
 
 local ENCODING = { ISO_8859_1 = 0, UTF_16 = 1, UTF_16BE = 2, UTF_8 = 3 }
-local GENRE = { [0] = "Blues", "Classic Rock", "Country", "Dance", "Disco", "Funk",
-	"Grunge", "Hip-Hop", "Jazz", "Metal", "New Age", "Oldies", "Other", "Pop", "R&B",
-	"Rap", "Reggae", "Rock", "Techno", "Industrial", "Alternative", "Ska", "Death Metal",
-	"Pranks", "Soundtrack", "Euro-Techno", "Ambient", "Trip-Hop", "Vocal", "Jazz+Funk",
-	"Fusion", "Trance", "Classical", "Instrumental", "Acid", "House", "Game", "Sound Clip",
-	"Gospel", "Noise", "AlternRock", "Bass", "Soul", "Punk", "Space", "Meditative",
-	"Instrumental Pop", "Instrumental Rock", "Ethnic", "Gothic", "Darkwave",
-	"Techno-Industrial", "Electronic", "Pop-Folk", "Eurodance", "Dream", "Southern Rock",
-	"Comedy", "Cult", "Gangsta", "Top 40", "Christian Rap", "Pop/Funk", "Jungle",
-	"Native American", "Cabaret", "New Wave", "Psychadelic", "Rave", "Showtunes", "Trailer", 
-	"Lo-Fi", "Tribal", "Acid Punk", "Acid Jazz", "Polka", "Retro", "Musical", "Rock & Roll", 
-	"Hard Rock", "Folk", "Folk-Rock", "National Folk", "Swing", "Fast Fusion", "Bebob",
-	"Latin", "Revival", "Celtic", "Bluegrass", "Avantgarde", "Gothic Rock", "Progressive Rock", 
-	"Psychedelic Rock", "Symphonic Rock", "Slow Rock", "Big Band", "Chorus", "Easy Listening", 
-	"Acoustic", "Humour", "Speech", "Chanson", "Opera", "Chamber Music", "Sonata", "Symphony", 
-	"Booty Bass", "Primus", "Porn Groove", "Satire", "Slow Jam", "Club", "Tango", "Samba", 
-	"Folklore", "Ballad", "Power Ballad", "Rhythmic Soul", "Freestyle", "Duet", "Punk Rock",
-	"Drum Solo", "Acapella", "Euro-House", "Dance Hall" }
+local GENRE = { [0] = "Blues", "Classic Rock", "Country", "Dance", "Disco",
+	"Funk", "Grunge", "Hip-Hop", "Jazz", "Metal", "New Age", "Oldies",
+	"Other", "Pop", "R&B", "Rap", "Reggae", "Rock", "Techno", "Industrial",
+	"Alternative", "Ska", "Death Metal", "Pranks", "Soundtrack", "Euro-Techno",
+	"Ambient", "Trip-Hop", "Vocal", "Jazz+Funk", "Fusion", "Trance",
+	"Classical", "Instrumental", "Acid", "House", "Game", "Sound Clip",
+	"Gospel", "Noise", "AlternRock", "Bass", "Soul", "Punk", "Space",
+	"Meditative", "Instrumental Pop", "Instrumental Rock", "Ethnic", "Gothic",
+	"Darkwave", "Techno-Industrial", "Electronic", "Pop-Folk", "Eurodance",
+	"Dream", "Southern Rock", "Comedy", "Cult", "Gangsta", "Top 40",
+	"Christian Rap", "Pop/Funk", "Jungle", "Native American", "Cabaret",
+	"New Wave", "Psychadelic", "Rave", "Showtunes", "Trailer", "Lo-Fi",
+	"Tribal", "Acid Punk", "Acid Jazz", "Polka", "Retro", "Musical",
+	"Rock & Roll", "Hard Rock", "Folk", "Folk-Rock", "National Folk", "Swing",
+	"Fast Fusion", "Bebob", "Latin", "Revival", "Celtic", "Bluegrass",
+	"Avantgarde", "Gothic Rock", "Progressive Rock", "Psychedelic Rock",
+	"Symphonic Rock", "Slow Rock", "Big Band", "Chorus", "Easy Listening",
+	"Acoustic", "Humour", "Speech", "Chanson", "Opera", "Chamber Music",
+	"Sonata", "Symphony", "Booty Bass", "Primus", "Porn Groove", "Satire",
+	"Slow Jam", "Club", "Tango", "Samba", "Folklore", "Ballad", "Power Ballad",
+	"Rhythmic Soul", "Freestyle", "Duet", "Punk Rock", "Drum Solo", "Acapella",
+	"Euro-House", "Dance Hall" }
 
 local id3 = {}
 id3.__index = id3
@@ -41,7 +45,8 @@ setmetatable(id3, {
 })
 
 getmetatable("").__mod = function(str, values)
-	return type(values) == "table" and str:format(unpack(values)) or str:format(values)
+	return type(values) == "table"
+		and str:format(unpack(values)) or str:format(values)
 end
 
 function id3.new(file)
@@ -68,7 +73,8 @@ function id3.parse_v1(self)
 		TPE2 = self.fd:seek(-95, "end") and read_string(self.fd, 30),
 		TALB = self.fd:seek(-65, "end") and read_string(self.fd, 30),
 		TDRC = self.fd:seek(-35, "end") and tonumber(read_string(self.fd, 4)),
-		COMM = { comment = self.fd:seek(-31, "end") and read_string(self.fd, 30) },
+		COMM = { comment = self.fd:seek(-31, "end")
+				and read_string(self.fd, 30) },
 		TCON = self.fd:seek(-1, "end") and GENRE[read_byte(self.fd)]
 	}
     self.fd:seek(-3, "end") 
@@ -122,7 +128,8 @@ end
 function read_flags(fd)
 	local byte, flags = read_byte(fd), {}
  	for bit = 7, 0, -1 do
-		table.insert(flags, nixio.bit.band(byte, nixio.bit.lshift(1, bit)) ~= 0)
+		table.insert(flags, nixio.bit.band(
+			byte, nixio.bit.lshift(1, bit)) ~= 0)
 	end
 	return unpack(flags)
 end
@@ -162,9 +169,11 @@ end
 function read_utf16_codepoint(fd, endian)
 	local high_byte, low_byte, codepoint = read_two_byte(fd, endian)
 	if high_byte >= 0xd8 and high_byte <= 0xdf then
-		codepoint = lshift(bor(lshift(band(high_byte, 0x27), 8), band(low_byte, 0xff)), 10)
+		codepoint = lshift(bor(lshift(band(high_byte, 0x27), 8),
+			band(low_byte, 0xff)), 10)
 		local high_byte, low_byte = read_two_byte(fd, endian)
-		codepoint = bor(codepoint, lshift(band(high_byte, 0x23), 8), band(low_byte, 0xff)) + 0x10000
+		codepoint = bor(codepoint, lshift(band(high_byte, 0x23), 8),
+			band(low_byte, 0xff)) + 0x10000
 	else
 		codepoint = bor(lshift(high_byte, 8), low_byte)
 	end
@@ -174,7 +183,8 @@ end
 function read_string(fd, max_size, encoding)
 	encoding = encoding or ENCODING.ISO_8859_1
 	local start, str = fd:tell(), {}
-	local endian = (encoding == ENCODING.UTF_16 or encoding == ENCODING.UTF_16BE) and read_utf16_bom(fd)
+	local endian = (encoding == ENCODING.UTF_16
+		or encoding == ENCODING.UTF_16BE) and read_utf16_bom(fd)
 	repeat
 		local chr = read_char(fd, encoding, endian)
 		if chr ~= "\0" then table.insert(str, chr) end
@@ -185,7 +195,8 @@ end
 function read_frame(fd, version_major)
 	local id, value = fd:read(4)
 	if id:sub(1, 1) == "\0" then return nil end
-	local size = (version_major == 4) and read_synchsafe_int(fd) or read_int(fd)
+	local size = (version_major == 4)
+		and read_synchsafe_int(fd) or read_int(fd)
 	local tag_preservation, file_preservation, read_only = read_flags(fd)
 	local compression, encryption, grouping = read_flags(fd)
 	local start = fd:tell()
@@ -221,7 +232,8 @@ function read_frame(fd, version_major)
 		local picture_type = read_byte(fd)
 		local description = read_string(fd, start - fd:tell() + size, encoding)
 		local picture_data = fd:read(start - fd:tell() + size)
-		value = { [picture_type] = { mime_type = mime_type, description = description, 
+		value = { [picture_type] = {
+			mime_type = mime_type, description = description,
 			picture_data = picture_data } }
 	else
 		fd:seek(size, "cur")

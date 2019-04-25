@@ -2,18 +2,20 @@
 -- Licensed to the public under the Apache License 2.0.
 
 -- http://www.subsonic.org/pages/api.jsp
+-- https://github.com/ultrasonic/ultrasonic
+--	/tree/master/subsonic-api/src/integrationTest/resources
 
 require "subsonic.table"
 
 local config = config or require "subsonic.config"
 local fs = require "subsonic.fs"
 local log = require "subsonic.log"
-local xml = require "subsonic.xml"
 local response = require "subsonic.response"
 local metadata = require "subsonic.metadata"
 local database = require "subsonic.db"
 
-local ipairs, pairs, table, next, tonumber, unpack = ipairs, pairs, table, next, tonumber, unpack
+local table, ipairs, pairs, next = table, ipairs, pairs, next
+local tonumber, tostring = tonumber, tostring
 
 local print = print
 
@@ -21,8 +23,8 @@ module "subsonic.rest"
 
 local function build_song_child(song)
 	return {
-		id = song.id,
-		parent = song.music_directory_id,
+		id = tostring(song.id),
+		parent = tostring(song.music_directory_id),
 		title = song.title,
 		isDir = false,
 		path = song.path,
@@ -39,11 +41,6 @@ local function build_song_child(song)
 		-- year =
 	}
 end
-
--- TODO: json
--- /rest/ping.view?f=json
--- {"subsonic-response":{"status":"ok","version":"1.16.0","type":"funkwhale","funkwhaleVersion":"0.18.3+git.a414461f"}}
--- https://github.com/ultrasonic/ultrasonic/tree/master/subsonic-api/src/integrationTest/resources
 
 -------------------------
 -- P U B L I C   A P I --
@@ -104,7 +101,8 @@ function get_indexes(qs)
 	local current_index = {}
 	local current_index_initial
 	local last_modified = 0	
-	table.sort(artists, function(left, right) return left.name < right.name end)
+	table.sort(artists, function(left, right)
+		return left.name < right.name end)
 	for _, artist in ipairs(artists) do
 		local index_initial = artist.name:sub(1, 1):upper()
 		if index_initial ~= current_index_initial then
@@ -113,12 +111,13 @@ function get_indexes(qs)
 			current_index = resp.indexes[#resp.indexes].index
 		end
 		table.insert(current_index, { artist = {
-			id = artist.id,
+			id = tostring(artist.id),
 			name = artist.name
 		} })
 		if artist.mtime > last_modified then last_modified = artist.mtime end
 	end
-	table.sort(songs, function(left, right) return left.title < right.title end)
+	table.sort(songs, function(left, right)
+		return left.title < right.title end)
 	for _, song in ipairs(songs) do
 		if song.mtime > last_modified then last_modified = song.mtime end
 		table.insert(resp.indexes, { child = build_song_child(song) })
@@ -142,17 +141,19 @@ function get_music_directory(qs)
 		parent = directory.parent_id,
 		name = directory.name
 	} }
-	table.sort(subfolders, function(left, right) return left.name < right.name end)
+	table.sort(subfolders, function(left, right)
+		return left.name < right.name end)
 	for _, subfolder in ipairs(subfolders) do
 		table.insert(resp.directory, { child = {
-			id = subfolder.id,
-			parent = subfolder.parent_id,
+			id = tostring(subfolder.id),
+			parent = tostring(subfolder.parent_id),
 			title = subfolder.name,
 			isDir = true,
 			artist = directory.name
 		}  })
 	end
-	table.sort(songs, function(left, right) return left.title < right.title end)
+	table.sort(songs, function(left, right)
+		return left.title < right.title end)
 	for _, song in ipairs(songs) do
 		table.insert(resp.directory, { child = build_song_child(song) })
 	end

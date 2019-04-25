@@ -146,7 +146,8 @@ end
 local function process(music_folder, path, parent_id, db)
 	for subpath in fs.iterate_folder(music_folder.path, path) do
 		if fs.is_dir(music_folder.path, subpath) then
-			local id = add_music_directory(music_folder, subpath, parent_id, db).id
+			local id = add_music_directory(music_folder,
+				subpath, parent_id, db).id
 			-- TODO: skip processing folder when no mtime change?
 			process(music_folder, subpath, id, db)
 		elseif metadata.is_media(music_folder.path, subpath) then

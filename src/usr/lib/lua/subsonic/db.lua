@@ -22,7 +22,8 @@ setmetatable(db, {
 })
 
 getmetatable("").__mod = function(str, values)
-	return type(values) == "table" and str:format(unpack(values)) or str:format(values)
+	return type(values) == "table"
+		and str:format(unpack(values)) or str:format(values)
 end
 
 local function escape(self, value)
@@ -131,7 +132,8 @@ function db.build_filters(self, filters)
 			if value[1]:starts("<") or value[1]:starts(">") then
 				sql = sql .. " " .. value[1] .. " " .. escape(self, value[2])
 			else
-				sql = sql .. " in (" .. table.concat(escape(self, value), ", ") .. ")"
+				sql = sql .. " in ("
+				.. table.concat(escape(self, value), ", ") .. ")"
 			end
 		elseif value == "null" then
 			sql = sql .. " is " .. value
