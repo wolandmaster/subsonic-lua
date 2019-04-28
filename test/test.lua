@@ -37,7 +37,8 @@ function dump(t, indent)
 		if type(value) == "table" then
 			dump(value, indent .. "\t")
 		else
-			io.write(type(value) == "string" and ("%q"):format(value) or tostring(value))
+			io.write(type(value) == "string"
+				and ("%q"):format(value) or tostring(value))
 			io.write(",\n")
 		end
 	end

@@ -15,7 +15,7 @@ module "subsonic.response"
 local SUBSONIC_API_VERSION = "1.0.0"
 
 local function json_to_string(value)
-	if type(value) == "string" then 
+	if type(value) == "string" then
 		return '"' .. tostring(value) .. '"'
 	else
 		return tostring(value)
@@ -37,15 +37,6 @@ end
 -------------------------
 function subsonic_api_version()
 	return SUBSONIC_API_VERSION
-end
-
-function http_200_ok(content_type, headers)
-	headers = headers and table.concat(headers, "\r\n") or ""
-	if headers ~= "" then headers = headers .. "\r\n" end
-	return "Status: 200 OK\r\n"
-	.. "Access-Control-Allow-Origin: *\r\n"
-	.. "Content-Type: " .. content_type .. "\r\n"
-	.. headers .. "\r\n"
 end
 
 function to_xml(array)
@@ -100,8 +91,17 @@ function to_json(array, flag)
 	return json:gsub(",$", "")
 end
 
+function http_200_ok(content_type, headers)
+	headers = headers and table.concat(headers, "\r\n") or ""
+	if headers ~= "" then headers = headers .. "\r\n" end
+	return "Status: 200 OK\r\n"
+	.. "Access-Control-Allow-Origin: *\r\n"
+	.. "Content-Type: " .. content_type .. "\r\n"
+	.. headers .. "\r\n"
+end
+
 function send_xml(msg, status)
-	msg = msg or ""
+	local msg = msg or ""
 	status = status or "ok"
 	log.debug("send xml:", msg)
 	io.write(http_200_ok("application/xml")
@@ -112,13 +112,23 @@ function send_xml(msg, status)
 end
 
 function send_json(msg, status)
-	msg = msg and "," .. msg or ""
+	local msg = (msg  and msg ~= "") and "," .. msg or ""
 	status = status or "ok"
 	log.debug("send json:", msg)
 	io.write(http_200_ok("application/json")
 	.. '{"subsonic-response":{"status":"' .. status .. '","version":"'
 	.. SUBSONIC_API_VERSION .. '"' .. msg .. '}}')
 	io.flush()
+end
+
+function send(resp, qs, status)
+	local qs = qs or {}
+	local format = qs.f or "xml"
+	if format == "xml" then
+		send_xml(to_xml(resp), status)
+	elseif format == "json" then
+		send_json(to_json(resp), status)
+	end
 end
 
 function send_binary(data)

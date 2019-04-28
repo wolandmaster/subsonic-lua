@@ -27,13 +27,18 @@ local VIDEO = {
 	mpg = "video/mpg", mpeg = "video/mpg"
 }
 
+local IMAGE = {
+	jpg = "image/jpeg", jpeg = "image/jpeg"
+}
+
 function is_media(...)
-	local extension = fs.extension(fs.join_path(...))
-	return AUDIO[extension] or VIDEO[extension]
+	local ext = fs.extension(fs.join_path(...)):lower()
+	return AUDIO[ext] or VIDEO[ext]
 end
 
 function content_type(...)
-	return is_media(...) or "application/octet-stream"
+	local ext = fs.extension(fs.join_path(...)):lower()
+	return is_media(...) or IMAGE[ext] or "application/octet-stream"
 end
 
 function read(...)

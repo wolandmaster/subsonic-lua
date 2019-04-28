@@ -18,7 +18,8 @@ function test_server(method, query)
 	io.output(tmp)
 	query = "u=user&p=enc:123456789a&v=1.2.0&c=android" .. (query or "")
 	nixio.setenv("QUERY_STRING", query)
-	nixio.setenv("REQUEST_URI", "/cgi-bin/subsonic/rest/" .. method .. ".view?" .. query)
+	nixio.setenv("REQUEST_URI", "/cgi-bin/subsonic/rest/"
+		.. method .. ".view?" .. query)
 	nixio.setenv("PATH_INFO", "/rest/" .. method .. ".view")
 	server.run()
 	tmp:seek("set", 0)
@@ -31,69 +32,82 @@ end
 function xml_200_ok(msg)
 	return response.http_200_ok("application/xml")
 	.. '<?xml version="1.0" encoding="UTF-8"?>\r\n'
-	.. '<subsonic-response status="ok" version="' .. response.subsonic_api_version() .. '">'
+	.. '<subsonic-response status="ok" version="'
+	.. response.subsonic_api_version() .. '">'
 	.. (msg or "") .. '</subsonic-response>'
+end
+
+function json_200_ok(msg)
+	local msg = (msg  and msg ~= "") and "," .. msg or ""
+	return response.http_200_ok("application/json")
+	.. '{"subsonic-response":{"status":"ok","version":"'
+	.. response.subsonic_api_version() .. '"' .. (msg or "") .. '}}'
 end
 
 function assert_equals(id, actual, expected)
 	if not test.assert_equals(id, actual, expected) then
-		print(test.cyan("log:") .. "\n" .. nixiofs.readfile(config.log_file()))
+		print(test.cyan("log:") .. "\n"
+			.. nixiofs.readfile(config.log_file()))
 	end
 	nixio.fs.remove(config.log_file())
 end
 
--- ping.view?u=user&p=enc:123456789a&v=1.2.0&c=android
-assert_equals("ping", test_server("ping"), xml_200_ok())
+-- ping.view
+assert_equals("ping xml", test_server("ping"), xml_200_ok())
+assert_equals("ping json", test_server("ping", "&f=json"), json_200_ok())
 
--- getLicense.view?u=user&p=enc:123456789a&v=1.2.0&c=android
-assert_equals("get license", test_server("getLicense"), xml_200_ok('<license valid="true"/>'))
+-- getLicense.view
+assert_equals("get license xml", test_server("getLicense"),
+	xml_200_ok('<license valid="true"/>'))
+assert_equals("get license json", test_server("getLicense", "&f=json"),
+	json_200_ok('"license":{"valid":true}'))
 
--- getMusicFolders.view?u=user&p=enc:123456789a&v=1.2.0&c=android
+-- getMusicFolders.view
 config.set_music_folders({
 	{ name = 'Music', enabled = '1' },
 	{ name = 'Video', enabled = '1' },
 	{ name = 'Dummy', enabled = '0' }
 })
-assert_equals("get music folders", test_server("getMusicFolders"),
+assert_equals("get music folders xml", test_server("getMusicFolders"),
 	xml_200_ok('<musicFolders>'
 	.. '<musicFolder id="1" name="Music"/>'
 	.. '<musicFolder id="2" name="Video"/>'
 	.. '</musicFolders>'))
+assert_equals("get music folders json",
+	test_server("getMusicFolders", "&f=json"), json_200_ok('"musicFolders":{'
+	.. '"musicFolder":[{"id":1,"name":"Music"},{"id":2,"name":"Video"}]}'))
 
--- getIndexes.view?u=user&p=enc:123456789a&v=1.2.0&c=android&ifModifiedSince=0&musicFolderId=1
+-- getIndexes.view?ifModifiedSince=0&musicFolderId=1
 config.set_db('test/resources/subsonic.db')
 config.set_music_folders({
 	{ name = 'Music', enabled = '1' }
 })
-assert_equals("get indexes", test_server("getIndexes", "&musicFolderId=1"),
+assert_equals("get indexes xml", test_server("getIndexes", "&musicFolderId=1"),
 	xml_200_ok('<indexes lastModified="1555571361">'
 	.. '<index name="A">'
 	.. '<artist id="1" name="Artist"/></index>'
-	.. '<child contentType="audio/mpeg" id="1" isDir="false" parent="0" path="Song1.mp3"'
-	.. ' size="0" suffix="mp3" title="Song1"/>'
+	.. '<child contentType="audio/mpeg" id="1" isDir="false" parent="0"'
+	.. ' path="Song1.mp3" size="0" suffix="mp3" title="Song1"/>'
 	.. '</indexes>'))
+assert_equals("get indexes json", test_server("getIndexes",
+	"&musicFolderId=1&f=json"), json_200_ok('"indexes":{'
+	.. '"lastModified":1555571361,"index":[{"name":"A","artist":[{"id":"1",'
+	.. '"name":"Artist"}]}],"child":[{"contentType":"audio/mpeg",'
+	.. '"id":"1","isDir":false,"parent":"0","path":"Song1.mp3","size":0,'
+	.. '"suffix":"mp3","title":"Song1"}]}'))
 
--- getMusicDirectory.view?u=user&p=enc:123456789a&v=1.2.0&c=android&id=1
+-- getMusicDirectory.view?id=1
 config.set_music_folders({ { name = 'Music', enabled = '1' } })
 config.set_db('test/resources/subsonic.db')
-assert_equals("get music directory 1", test_server("getMusicDirectory", "&id=3"),
-	xml_200_ok('<directory id="3" name="CD1" parent="2">'
+assert_equals("get music directory 1", test_server("getMusicDirectory",
+	"&id=3"), xml_200_ok('<directory id="3" name="CD1" parent="2">'
 	.. '<child contentType="audio/mpeg" id="3" isDir="false" parent="3"'
-	.. ' path="Artist/Album/CD1/Song4.mp3" size="0" suffix="mp3" title="Song4"/>'
-	.. '</directory>'))
-assert_equals("get music directory 2", test_server("getMusicDirectory", "&id=1"),
-	xml_200_ok('<directory id="1" name="Artist" parent="0">'
-	.. '<child artist="Artist" id="2" isDir="true" parent="1" title="Album"/>'
+	.. ' path="Artist/Album/CD1/Song4.mp3" size="0" suffix="mp3"'
+	.. ' title="Song4"/></directory>'))
+assert_equals("get music directory 2", test_server("getMusicDirectory",
+	"&id=1"), xml_200_ok('<directory id="1" name="Artist" parent="0">'
+	.. '<child album="Album" artist="Artist" id="2" isDir="true" parent="1" title="Album"/>'
 	.. '<child contentType="audio/mpeg" id="4" isDir="false" parent="1"'
 	.. ' path="Artist/Song2.mp3" size="0" suffix="mp3" title="Song2"/>'
 	.. '</directory>'))
-
--- config.set_db('test/resources/subsonic-id3.db')
--- config.set_music_folders({ { name = 'Music', enabled = '1' } })
--- assert_equals("get music directory 2", test_server("getMusicDirectory", "&id=3"),
---	xml_200_ok('<directory id="3" name="CD1" parent="2">'
---	.. '<child album="Album-ID3" artist="Artist-ID3" bitRate="128" contentType="audio/mpeg" '
---	.. 'coverArt="1" duration="1" genre="Other" id="2" isDir="false" parent="3" '
---	.. 'path="Artist/Album/CD1/Song4.mp3" size="1234" suffix="mp3" title="Song4-ID3" track="1" year="1982"/>'
---	.. '</directory>'))
 

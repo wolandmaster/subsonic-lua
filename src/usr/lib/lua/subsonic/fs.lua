@@ -51,6 +51,14 @@ function iterate_folder(base, path)
 	end
 end
 
+function dir(base, path)
+	local entries = {}
+	for entry in iterate_folder(base, path) do
+		table.insert(entries, entry)
+	end
+	return sort_by_name(entries)
+end
+
 function iterate_files_recursive(path)
 	local function walk(path)
 		for entry in nixio.fs.dir(path) do

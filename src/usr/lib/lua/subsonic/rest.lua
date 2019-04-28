@@ -30,14 +30,14 @@ local function build_song_child(song)
 		path = song.path,
 		size = song.size,
 		suffix = fs.extension(song.path),
-		contentType = metadata.content_type(song.path)
+		contentType = metadata.content_type(song.path),
+		track = song.track
 		-- album =
 		-- artist =
 		-- bitRate =
 		-- coverArt =
 		-- duration =
 		-- genre =
-		-- track =
 		-- year =
 	}
 end
@@ -46,17 +46,12 @@ end
 -- P U B L I C   A P I --
 -------------------------
 function ping(qs)
-	local format = qs.f or "xml"
-	if format == "xml" then
-		response.send_xml()
-	elseif format == "json" then
-		response.send_json()		
-	end
+	response.send({}, qs)
 end
 
 function get_license(qs)
 	local resp = { license = { valid = true } }
-	response.send_xml(response.to_xml(resp))
+	response.send(resp, qs)
 end
 
 function get_music_folders(qs)
@@ -69,7 +64,7 @@ function get_music_folders(qs)
 			} })
 		end
 	end
-	response.send_xml(response.to_xml(resp))
+	response.send(resp, qs)
 end
 
 function get_indexes(qs)
@@ -93,14 +88,14 @@ function get_indexes(qs)
 
 	if next(artists) == nil and next(songs) == nil then
 		log.info("no index change since " .. modified_since)
-		response.send_xml()
+		response.send({}, qs)
 		return
 	end
 
 	local resp = { indexes = {} }
 	local current_index = {}
 	local current_index_initial
-	local last_modified = 0	
+	local last_modified = 0
 	table.sort(artists, function(left, right)
 		return left.name < right.name end)
 	for _, artist in ipairs(artists) do
@@ -117,13 +112,13 @@ function get_indexes(qs)
 		if artist.mtime > last_modified then last_modified = artist.mtime end
 	end
 	table.sort(songs, function(left, right)
-		return left.title < right.title end)
+		return left.track < right.track end)
 	for _, song in ipairs(songs) do
 		if song.mtime > last_modified then last_modified = song.mtime end
 		table.insert(resp.indexes, { child = build_song_child(song) })
 	end
 	resp.indexes.lastModified = last_modified
-	response.send_xml(response.to_xml(resp))
+	response.send(resp, qs)
 end
 
 function get_music_directory(qs)
@@ -135,7 +130,7 @@ function get_music_directory(qs)
 	local songs = db:query("select * from song",
 		{ music_directory_id = tonumber(qs.id) })
 	db:close()
-	
+
 	local resp = { directory = {
 		id = directory.id,
 		parent = directory.parent_id,
@@ -149,15 +144,16 @@ function get_music_directory(qs)
 			parent = tostring(subfolder.parent_id),
 			title = subfolder.name,
 			isDir = true,
-			artist = directory.name
+			artist = directory.name,
+			album = subfolder.name:gsub("^%d%d%d%d%s*[_-]*%s*", "")
 		}  })
 	end
 	table.sort(songs, function(left, right)
-		return left.title < right.title end)
+		return left.track < right.track end)
 	for _, song in ipairs(songs) do
 		table.insert(resp.directory, { child = build_song_child(song) })
 	end
-	response.send_xml(response.to_xml(resp))
+	response.send(resp, qs)
 end
 
 function stream(qs)

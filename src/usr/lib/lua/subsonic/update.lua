@@ -57,8 +57,8 @@ local function create_table_song(db)
 			title text not null,
 			mtime integer not null,
 			size integer not null,
+			track integer not null,
 			album_id integer,
-			track integer,
 			year integer,
 			genre text,
 			bitrate integer,
@@ -118,7 +118,7 @@ end
 local function add_album()
 end
 
-local function add_song(music_folder, path, music_directory_id, db)
+local function add_song(music_folder, path, track, music_directory_id, db)
 	db:execute("begin transaction")
 	local song = db:query_first("select * from song",
 		{ path = path, music_folder_id = music_folder[".index"] })
@@ -127,9 +127,11 @@ local function add_song(music_folder, path, music_directory_id, db)
 			music_folder_id = music_folder[".index"],
 			music_directory_id = music_directory_id,
 			path = path,
-			title = fs.no_extension(fs.basename(path)):gsub("[_-]", " "),
+			title = fs.no_extension(fs.basename(path))
+				:gsub("[_-]", " "):gsub("^%d+%s*", ""),
 			mtime = 0,
-			size = fs.file_size(music_folder.path, path)
+			size = fs.file_size(music_folder.path, path),
+			track = track
 		})
 	end
 	if fs.last_modification(music_folder.path, path) > song.mtime then
@@ -144,7 +146,8 @@ local function add_song(music_folder, path, music_directory_id, db)
 end
 
 local function process(music_folder, path, parent_id, db)
-	for subpath in fs.iterate_folder(music_folder.path, path) do
+	local track = 1
+	for _, subpath in ipairs(fs.dir(music_folder.path, path)) do
 		if fs.is_dir(music_folder.path, subpath) then
 			local id = add_music_directory(music_folder,
 				subpath, parent_id, db).id
@@ -152,7 +155,8 @@ local function process(music_folder, path, parent_id, db)
 			process(music_folder, subpath, id, db)
 		elseif metadata.is_media(music_folder.path, subpath) then
 			log.info("process song:", subpath)
-			add_song(music_folder, subpath, parent_id, db)
+			add_song(music_folder, subpath, track, parent_id, db)
+			track = track + 1
 		end
 	end
 end
