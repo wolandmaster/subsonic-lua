@@ -11,7 +11,7 @@ local test = require "test"
 local server = require "subsonic.server"
 local response = require "subsonic.response"
 
-function test_server(method, query)
+local function test_server(method, query)
 	config.set_log_file(os.tmpname())
 	local stdout = io.output()
 	local tmp = io.tmpfile()
@@ -29,7 +29,7 @@ function test_server(method, query)
 	return response
 end
 
-function xml_200_ok(msg)
+local function xml_200_ok(msg)
 	return response.http_200_ok("application/xml")
 	.. '<?xml version="1.0" encoding="UTF-8"?>\r\n'
 	.. '<subsonic-response status="ok" version="'
@@ -37,14 +37,14 @@ function xml_200_ok(msg)
 	.. (msg or "") .. '</subsonic-response>'
 end
 
-function json_200_ok(msg)
+local function json_200_ok(msg)
 	local msg = (msg  and msg ~= "") and "," .. msg or ""
 	return response.http_200_ok("application/json")
 	.. '{"subsonic-response":{"status":"ok","version":"'
 	.. response.subsonic_api_version() .. '"' .. (msg or "") .. '}}'
 end
 
-function assert_equals(id, actual, expected)
+local function assert_equals(id, actual, expected)
 	if not test.assert_equals(id, actual, expected) then
 		print(test.cyan("log:") .. "\n"
 			.. nixiofs.readfile(config.log_file()))
@@ -86,28 +86,30 @@ assert_equals("get indexes xml", test_server("getIndexes", "&musicFolderId=1"),
 	xml_200_ok('<indexes lastModified="1555571361">'
 	.. '<index name="A">'
 	.. '<artist id="1" name="Artist"/></index>'
-	.. '<child contentType="audio/mpeg" id="1" isDir="false" parent="0"'
-	.. ' path="Song1.mp3" size="0" suffix="mp3" title="Song1"/>'
+	.. '<child contentType="audio/mpeg" coverArt="0" id="1" isDir="false"'
+	.. ' parent="0" path="Song1.mp3" size="0" suffix="mp3" title="Song1"/>'
 	.. '</indexes>'))
 assert_equals("get indexes json", test_server("getIndexes",
 	"&musicFolderId=1&f=json"), json_200_ok('"indexes":{'
 	.. '"lastModified":1555571361,"index":[{"name":"A","artist":[{"id":"1",'
 	.. '"name":"Artist"}]}],"child":[{"contentType":"audio/mpeg",'
-	.. '"id":"1","isDir":false,"parent":"0","path":"Song1.mp3","size":0,'
-	.. '"suffix":"mp3","title":"Song1"}]}'))
+	.. '"coverArt":"0","id":"1","isDir":false,"parent":"0","path":"Song1.mp3",'
+	.. '"size":0,"suffix":"mp3","title":"Song1"}]}'))
 
 -- getMusicDirectory.view?id=1
 config.set_music_folders({ { name = 'Music', enabled = '1' } })
 config.set_db('test/resources/subsonic.db')
-assert_equals("get music directory 1", test_server("getMusicDirectory",
+assert_equals("get music directory xml 1", test_server("getMusicDirectory",
 	"&id=3"), xml_200_ok('<directory id="3" name="CD1" parent="2">'
-	.. '<child contentType="audio/mpeg" id="3" isDir="false" parent="3"'
-	.. ' path="Artist/Album/CD1/Song4.mp3" size="0" suffix="mp3"'
+	.. '<child contentType="audio/mpeg" coverArt="3" id="3" isDir="false"'
+	.. ' parent="3" path="Artist/Album/CD1/Song4.mp3" size="0" suffix="mp3"'
 	.. ' title="Song4"/></directory>'))
-assert_equals("get music directory 2", test_server("getMusicDirectory",
+assert_equals("get music directory xml 2", test_server("getMusicDirectory",
 	"&id=1"), xml_200_ok('<directory id="1" name="Artist" parent="0">'
-	.. '<child album="Album" artist="Artist" id="2" isDir="true" parent="1" title="Album"/>'
-	.. '<child contentType="audio/mpeg" id="4" isDir="false" parent="1"'
-	.. ' path="Artist/Song2.mp3" size="0" suffix="mp3" title="Song2"/>'
+	.. '<child album="Album" artist="Artist" coverArt="2" id="2" isDir="true"'
+	.. ' parent="1" title="Album"/>'
+	.. '<child contentType="audio/mpeg" coverArt="1" id="4" isDir="false"'
+	.. ' parent="1" path="Artist/Song2.mp3" size="0" suffix="mp3"'
+	.. ' title="Song2"/>'
 	.. '</directory>'))
 

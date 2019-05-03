@@ -131,9 +131,10 @@ function send(resp, qs, status)
 	end
 end
 
-function send_binary(data)
-	io.write(http_200_ok("application/octet-stream",
-		{ "Content-Length: " .. data:len() }))
+function send_binary(data, content_type)
+	local content_type = content_type or "application/octet-stream"
+	log.debug("send", content_type, "with size:", #data)
+	io.write(http_200_ok(content_type, { "Content-Length: " .. #data }))
 	io.write(data)
 	io.flush()
 end

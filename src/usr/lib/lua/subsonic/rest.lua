@@ -31,11 +31,11 @@ local function build_song_child(song)
 		size = song.size,
 		suffix = fs.extension(song.path),
 		contentType = metadata.content_type(song.path),
-		track = song.track
+		track = song.track,
+		coverArt = tostring(song.music_directory_id)
 		-- album =
 		-- artist =
 		-- bitRate =
-		-- coverArt =
 		-- duration =
 		-- genre =
 		-- year =
@@ -145,8 +145,9 @@ function get_music_directory(qs)
 			title = subfolder.name,
 			isDir = true,
 			artist = directory.name,
-			album = subfolder.name:gsub("^%d%d%d%d%s*[_-]*%s*", "")
-		}  })
+			album = subfolder.name:gsub("^%d%d%d%d%s*[_-]*%s*", ""),
+			coverArt = tostring(subfolder.id)
+		} })
 	end
 	table.sort(songs, function(left, right)
 		return left.track < right.track end)
@@ -164,6 +165,21 @@ function stream(qs)
 	response.send_file(music_folder.path, song.path)
 end
 
+function get_cover_art(qs)
+	local db = database(config.db())
+	local covers = table.map(db:query("select * from cover",
+		{ music_directory_id = tonumber(qs.id) }), function(cover)
+		return cover, cover.dimension
+	end)
+	db:close()
+	log.debug("covers:", covers)
+	if next(covers) ~= nil then
+		local cover = covers[tonumber(qs.size)] or covers[0]
+		response.send_binary(cover.image,
+			metadata.content_type(config.cover_file()))
+	end
+end
+
 function get_random_songs(qs)
 end
 
@@ -174,8 +190,5 @@ function get_playlists(qs)
 end
 
 function get_album_list(qs)
-end
-
-function get_cover_art(qs)
 end
 

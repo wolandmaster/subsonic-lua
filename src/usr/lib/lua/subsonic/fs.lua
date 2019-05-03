@@ -4,15 +4,16 @@
 require "subsonic.table"
 
 local nixio = require "nixio"
+local nixiofs = require "nixio.fs"
 
 local table, coroutine = table, coroutine
 
 module "subsonic.fs"
 
 function join_path(...)
-	return table.concat(table.ifilter({...}, function(value)
+	return (table.concat(table.ifilter({...}, function(value)
 		return value ~= ""
-	end), "/"):gsub("/+", "/")
+	end), "/"):gsub("/+", "/"))
 end
 
 function basename(path)
@@ -75,6 +76,10 @@ end
 
 function file_size(...)
 	return nixio.fs.stat(join_path(...), "size")
+end
+
+function readfile(...)
+	return nixiofs.readfile(join_path(...))
 end
 
 function inode(...)

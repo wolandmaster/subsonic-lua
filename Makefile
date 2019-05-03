@@ -17,6 +17,7 @@ test: test-deploy
 	lua test/fs.lua
 	lua test/id3.lua
 	lua test/mpeg.lua
+	lua test/db.lua
 	lua test/response.lua
 	lua test/server.lua
 

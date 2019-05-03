@@ -7,6 +7,7 @@
 -- https://keplerproject.github.io/luasql/manual.html
 
 require "subsonic.string"
+require "subsonic.table"
 
 local log = require "subsonic.log"
 local fs = require "subsonic.fs"
@@ -34,10 +35,36 @@ local function escape(self, value)
 		end
 		return escaped_value
 	elseif type(value) == "string" and value ~= "null" then
-		return "'" .. self.conn:escape(value) .. "'"
+		return value:has_unprintable()
+			and "X'" .. value:tohex() .. "'"
+			or "'" .. self.conn:escape(value) .. "'"
 	else
 		return value
 	end
+end
+
+local function build_filters(self, filters)
+	local sql = ""
+	for column, value in pairs(filters) do
+		sql = sql .. (sql:find("where") and " and " or " where ") .. column
+		if type(value) == "table" then
+			if value[1]:starts("<") or value[1]:starts(">") then
+				sql = sql .. " " .. value[1] .. " " .. escape(self, value[2])
+			else
+				sql = sql .. " in ("
+				.. table.concat(escape(self, value), ", ") .. ")"
+			end
+		elseif value == "null" then
+			sql = sql .. " is " .. value
+		else
+			sql = sql .. " = " .. escape(self, value)
+		end
+	end
+	return sql
+end
+
+local function ellipsize_blob(str)
+	return (str:gsub("(X'%w%w%w%w)%w+(%w%w%w%w')", "%1..%2"))
 end
 
 -------------------------
@@ -54,9 +81,9 @@ end
 function db.execute(self, sql, filters)
 	if sql:find("\n") then sql = "\n" .. sql end
 	if sql:find("select") or sql:find("delete") or sql:find("update") then
-		sql = sql .. self:build_filters(filters or {})
+		sql = sql .. build_filters(self, filters or {})
 	end
-	log.debug("sql execute:", sql)
+	log.debug("sql execute:", ellipsize_blob(sql))
 	return assert(self.conn:execute(sql))
 end
 
@@ -94,7 +121,7 @@ function db.insert(self, table_name, values)
 		table.insert(column_list, column)
 		table.insert(value_list, escape(self, value))
 	end
-	self:execute("\tinsert into %s (%s)\n\tvalues (%s)" % { 
+	self:execute("\tinsert into %s (%s)\n\tvalues (%s)" % {
 		table_name,
 		table.concat(column_list, ", "),
 		table.concat(value_list, ", ")
@@ -108,7 +135,7 @@ function db.insert(self, table_name, values)
 end
 
 function db.update(self, table_name, values, filters)
-	local updates = {} 
+	local updates = {}
 	for column, value in pairs(values) do
 		table.insert(updates, column .. " = " .. escape(self, value))
 	end
@@ -118,30 +145,14 @@ function db.update(self, table_name, values, filters)
 	}, filters)
 end
 
-function db.close(self)
-	self.conn:close()
-	self.env:close()
-	log.debug("close db")
+function db.dump(self, table_name)
+	return table.dump(self:query("select * from " .. table_name))
 end
 
-function db.build_filters(self, filters)
-	local sql = ""
-	for column, value in pairs(filters) do
-		sql = sql .. (sql:find("where") and " and " or " where ") .. column
-		if type(value) == "table" then
-			if value[1]:starts("<") or value[1]:starts(">") then
-				sql = sql .. " " .. value[1] .. " " .. escape(self, value[2])
-			else
-				sql = sql .. " in ("
-				.. table.concat(escape(self, value), ", ") .. ")"
-			end
-		elseif value == "null" then
-			sql = sql .. " is " .. value
-		else
-			sql = sql .. " = " .. escape(self, value)
-		end
-	end
-	return sql
+function db.close(self)
+	log.debug("close db")
+	self.conn:close()
+	return self.env:close()
 end
 
 return db

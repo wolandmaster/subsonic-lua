@@ -5,12 +5,14 @@ function table.put(array, ...)
 	for _, value in ipairs({...}) do
 		table.insert(array, value)
 	end
+	return array
 end
 
 function table.map(array, func)
 	local out = {}
 	for key, value in pairs(array) do
-		out[key] = func(value, key, array)
+		local out_value, out_key = func(value, key, array)
+		out[out_key or key] = out_value
 	end
 	return out
 end
@@ -37,10 +39,10 @@ end
 
 -- key sorted iterator
 function table.spairs(array, order)
-	local keys = {} 
+	local keys = {}
 	for key, _ in pairs(array) do
 		table.insert(keys, key)
-	end 
+	end
 	table.sort(keys, order)
 	local index = 0
 	local iter = function()
@@ -49,6 +51,14 @@ function table.spairs(array, order)
 			or keys[index], array[keys[index]]
 	end
 	return iter
+end
+
+function table.keys(array)
+	local keys = {}
+	for key, _ in pairs(array) do
+		table.insert(keys, key)
+	end
+	return keys
 end
 
 function table.compare_mixed(left, right)
@@ -60,19 +70,31 @@ function table.compare_mixed(left, right)
 	end
 end
 
-function table.dump(array)
-	if type(array) == "table" then
-		local str = "{ "
-		for key, value in pairs(array) do
+function table.clone(array)
+	return { unpack(array) }
+end
+
+function table.dump(entry)
+	if type(entry) == "table" then
+		local str = "{"
+		for key, value in pairs(entry) do
 			if type(key) ~= "number" then key = '"' .. key .. '"' end
-			str = str .. "[" .. key .. "] = " .. table.dump(value) .. ", "
+			str = str .. "[" .. key .. "]=" .. table.dump(value) .. ","
 		end
-		return str:gsub(", $", "") .. "} "
+		return str:gsub(",$", "") .. "}"
 	else
-		if type(array) == "number" then
-			return tostring(array)
-		else
-			return '"' .. array .. '"'
+		if type(entry) == "number" then
+			return tostring(entry)
+		elseif type(entry) == "string" then
+			if entry:has_unprintable() then
+				local hex = entry:tohex()
+				return #hex > 8
+				and '"' .. hex:sub(1, 4) .. ".." .. ((#hex - 8) / 2)
+					.. ".." .. hex:sub(-4) .. '"'
+				or '"' .. hex .. '"'
+			else
+				return '"' .. entry .. '"'
+			end
 		end
 	end
 end

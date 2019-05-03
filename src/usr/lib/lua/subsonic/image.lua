@@ -1,11 +1,10 @@
--- Copyright 2015-2017 Sandor Balazsi <sandor.balazsi@gmail.com>
+-- Copyright 2015-2019 Sandor Balazsi <sandor.balazsi@gmail.com>
 -- Licensed to the public under the Apache License 2.0.
 
 require "subsonic.string"
 
 local ltn12 = require "ltn12"
 local https = require "ssl.https"
-local nixiofs = require "nixio.fs"
 
 local fs = require "subsonic.fs"
 local metadata = require "subsonic.metadata"
@@ -39,7 +38,7 @@ local function multipart_form_data(boundary, array)
 			local file = data:sub(2)
 			resp = resp ..'; filename="' .. fs.basename(file) .. '"\r\n'
 				.. "Content-Type: " .. metadata.content_type(file)
-			data = nixiofs.readfile(file)
+			data = fs.readfile(file)
 		end
 		resp = resp .. "\r\n\r\n" .. data .. "\r\n"
 	end
