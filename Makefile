@@ -14,6 +14,7 @@ test-deploy: test-remove
 	ln -sf /usr/lib/lua/subsonic/update.lua /usr/local/bin/subsonic_update
 
 test: test-deploy
+	lua test/string.lua
 	lua test/fs.lua
 	lua test/id3.lua
 	lua test/mpeg.lua

@@ -181,6 +181,25 @@ function get_cover_art(qs)
 end
 
 function get_random_songs(qs)
+	local db = database(config.db())
+	local from_year = qs.fromYear and " where (year >= " .. qs.fromYear
+		.. " or year is null)" or ""
+	local to_year = qs.toYear and " where (year <= " .. qs.toYear
+		.. " or year is null)" or ""
+	local genre = qs.genre and " where (genre = '" .. qs.genre
+		.. "' or genre is null)" or ""
+	local songs = db:query("select * from song"
+		.. db:build_filters({ music_folder_id = qs.musicFolder
+			and tonumber(qs.musicFolderId) } )
+		.. from_year .. to_year .. genre
+		.. " order by random() limit " .. (tonumber(qs.size) or 10))
+	db:close()
+
+	local resp = { randomSongs = {} }
+	for _, song in ipairs(songs) do
+		table.insert(resp.randomSongs, { song = build_song_child(song) })
+	end
+	response.send(resp, qs)
 end
 
 function scrobble(qs)

@@ -97,8 +97,8 @@ assert_equals("get indexes json", test_server("getIndexes",
 	.. '"size":0,"suffix":"mp3","title":"Song1"}]}'))
 
 -- getMusicDirectory.view?id=1
-config.set_music_folders({ { name = 'Music', enabled = '1' } })
 config.set_db('test/resources/subsonic.db')
+config.set_music_folders({ { name = 'Music', enabled = '1' } })
 assert_equals("get music directory xml 1", test_server("getMusicDirectory",
 	"&id=3"), xml_200_ok('<directory id="3" name="CD1" parent="2">'
 	.. '<child contentType="audio/mpeg" coverArt="3" id="3" isDir="false"'

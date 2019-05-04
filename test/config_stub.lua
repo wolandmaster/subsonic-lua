@@ -3,35 +3,42 @@
 
 module "config_stub"
 
-local music_folders_stub
-local log_file_stub
-local db_stub
+local conf = {
+	["music_folders"] = {},
+	["log_file"] = "/dev/tty",
+	["log_level"] = "info",
+	["db"] = ""
+}
 
 function music_folders()
-	return music_folders_stub
-end
-
-function set_music_folders(stub)
-	music_folders_stub = stub
+	return conf.music_folders
 end
 
 function log_file()
-	return log_file_stub
-end
-
-function set_log_file(stub)
-	log_file_stub = stub
+	return conf.log_file
 end
 
 function log_level()
-	return "debug"
+	return conf.log_level
 end
 
 function db()
-	return db_stub
+	return conf.db
 end
 
-function set_db(stub)
-	db_stub = stub
+function set_music_folders(value)
+	conf.music_folders = value
+end
+
+function set_log_file(value)
+	conf.log_file = value
+end
+
+function set_log_level(value)
+	conf.log_level = value
+end
+
+function set_db(value)
+	conf.db = value
 end
 

@@ -29,5 +29,7 @@ function string.has_unprintable(str)
 	return false
 end
 
-
+function string.replace_except_first(str, find, replacement)
+	return str:gsub(find, "\1", 1):gsub(find, replacement):gsub("\1", find, 1)
+end
 

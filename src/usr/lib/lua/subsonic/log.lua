@@ -28,7 +28,7 @@ end
 
 function message(loglevel, ...)
 	if fh == nil then
-		open("/dev/tty", "debug")
+		open("/dev/tty", "info")
 	end
 	if LEVEL[loglevel] <= LEVEL[level] then
 		fh:lock("lock")

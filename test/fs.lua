@@ -1,4 +1,4 @@
--- Copyright 2015-2017 Sandor Balazsi <sandor.balazsi@gmail.com>
+-- Copyright 2015-2019 Sandor Balazsi <sandor.balazsi@gmail.com>
 -- Licensed to the public under the Apache License 2.0.
 
 package.path = package.path .. ";./test/?.lua"
