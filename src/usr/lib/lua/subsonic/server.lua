@@ -21,7 +21,7 @@ local function get_query_string()
 	end
 	return qs
 end
-	
+
 -------------------------
 -- P U B L I C   A P I --
 -------------------------

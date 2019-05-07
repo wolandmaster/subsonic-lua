@@ -15,9 +15,7 @@ local metadata = require "subsonic.metadata"
 local database = require "subsonic.db"
 
 local table, ipairs, pairs, next = table, ipairs, pairs, next
-local tonumber, tostring = tonumber, tostring
-
-local print = print
+local os, tonumber, tostring = os, tonumber, tostring
 
 module "subsonic.rest"
 
@@ -181,18 +179,20 @@ function get_cover_art(qs)
 end
 
 function get_random_songs(qs)
-	local db = database(config.db())
+	local limit = qs.size and tonumber(qs.size) or 10
+	local genre = qs.genre and " where (genre = '" .. qs.genre
+		.. "' or genre is null)" or ""
 	local from_year = qs.fromYear and " where (year >= " .. qs.fromYear
 		.. " or year is null)" or ""
 	local to_year = qs.toYear and " where (year <= " .. qs.toYear
 		.. " or year is null)" or ""
-	local genre = qs.genre and " where (genre = '" .. qs.genre
-		.. "' or genre is null)" or ""
+
+	local db = database(config.db())
 	local songs = db:query("select * from song"
 		.. db:build_filters({ music_folder_id = qs.musicFolder
 			and tonumber(qs.musicFolderId) } )
 		.. from_year .. to_year .. genre
-		.. " order by random() limit " .. (tonumber(qs.size) or 10))
+		.. " order by random() limit " .. limit)
 	db:close()
 
 	local resp = { randomSongs = {} }
@@ -202,12 +202,52 @@ function get_random_songs(qs)
 	response.send(resp, qs)
 end
 
+-- type: random, newest, highest, recent, frequent
+--	   alphabeticalByName, alphabeticalByArtist
+--	   starred, byYear, byGenre
+function get_album_list(qs)
+	local sort = ""
+	if not qs.type or qs.type == "random" then
+		sort = " order by random()"
+	elseif qs.type == "newest" then
+		sort = " order by mtime desc"
+	end
+	local limit = qs.size and tonumber(qs.size) or 10
+	local offset = qs.offset and tonumber(qs.offset) or 0
+	local from_year = ""	-- TODO
+	local to_year = ""		-- TODO
+	local genre = ""		-- TODO
+	local music_folder = qs.musicFolderId and " where music_folder_id = "
+		.. qs.musicFolderId or ""
+
+	local db = database(config.db())
+	local folders = db:query("select * from music_directory"
+		.. " where parent_id != 0" .. music_folder
+		.. from_year .. to_year .. genre .. sort
+		.. " limit " .. limit .. " offset " .. offset
+	)
+	db:close()
+
+	local resp = { albumList = {} }
+	for _, folder in ipairs(folders) do
+		table.insert(resp.albumList, { album = {
+			id = tostring(folder.id),
+			parent = tostring(folder.parent_id),
+			title = folder.name,
+			isDir = true,
+			coverArt = tostring(folder.id)
+		} })
+	end
+	response.send(resp, qs)
+end
+
+function get_album_list_2(qs)
+
+end
+
 function scrobble(qs)
 end
 
 function get_playlists(qs)
-end
-
-function get_album_list(qs)
 end
 

@@ -5,10 +5,11 @@ require "subsonic.table"
 
 local nixio = require "nixio"
 local log = require "subsonic.log"
+local metadata = require "subsonic.metadata"
 local fs = require "subsonic.fs"
 
-local io, table, pairs, type, tostring = io, table, pairs, type, tostring
-local next = next
+local io, table, pairs, ipairs, type = io, table, pairs, ipairs, type
+local next, tostring, string = next, tostring, string
 
 module "subsonic.response"
 
@@ -100,24 +101,24 @@ function http_200_ok(content_type, headers)
 	.. headers .. "\r\n"
 end
 
-function send_xml(msg, status)
-	local msg = msg or ""
+function send_xml(xml, status)
+	local xml = xml or ""
 	status = status or "ok"
-	log.debug("send xml:", msg)
+	log.debug("send xml:", xml)
 	io.write(http_200_ok("application/xml")
 	.. '<?xml version="1.0" encoding="UTF-8"?>\r\n'
 	.. '<subsonic-response status="' .. status .. '" version="'
-	.. SUBSONIC_API_VERSION .. '">' .. msg .. '</subsonic-response>')
+	.. SUBSONIC_API_VERSION .. '">' .. xml .. '</subsonic-response>')
 	io.flush()
 end
 
-function send_json(msg, status)
-	local msg = (msg  and msg ~= "") and "," .. msg or ""
+function send_json(json, status)
+	local json = (json and json ~= "") and "," .. json or ""
 	status = status or "ok"
-	log.debug("send json:", msg)
+	log.debug("send json:", json)
 	io.write(http_200_ok("application/json")
 	.. '{"subsonic-response":{"status":"' .. status .. '","version":"'
-	.. SUBSONIC_API_VERSION .. '"' .. msg .. '}}')
+	.. SUBSONIC_API_VERSION .. '"' .. json .. '}}')
 	io.flush()
 end
 
@@ -134,8 +135,7 @@ end
 function send_binary(data, content_type)
 	local content_type = content_type or "application/octet-stream"
 	log.debug("send", content_type, "with size:", #data)
-	io.write(http_200_ok(content_type, { "Content-Length: " .. #data }))
-	io.write(data)
+	io.write(http_200_ok(content_type) .. data)
 	io.flush()
 end
 
@@ -143,14 +143,19 @@ function send_file(...)
 	local file = fs.join_path(...)
 	local fh = nixio.open(file, 'r')
 	log.debug("send file:", file)
-	io.write(http_200_ok("application/octet-stream",
-		{ "Content-Length: " .. fs.file_size(file) }))
+	-- uhttpd always sends chunked transfer encoding header
+	local server_software = nixio.getenv("SERVER_SOFTWARE") or ""
+	local headers = (server_software:lower() ~= "uhttpd")
+		and { "Transfer-Encoding: chunked" } or {}
+	io.write(http_200_ok(metadata.content_type(file), headers))
 	repeat
 		local buf = fh:read(2^13)	-- 8k
-		io.write(buf)
+		io.write(string.format("%X", #buf)
+		.. "\r\n" .. buf .. "\r\n")
 	until (buf == "")
 	io.flush()
 	fh:close()
+	log.debug("file sent (" .. file .. ")")
 end
 
 function send_error(error_code)
