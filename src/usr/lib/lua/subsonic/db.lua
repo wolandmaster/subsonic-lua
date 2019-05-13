@@ -43,7 +43,6 @@ local function escape(self, value)
 	end
 end
 
-
 local function ellipsize_blob(str)
 	return (str:gsub("(X'%w%w%w%w)%w+(%w%w%w%w')", "%1..%2"))
 end

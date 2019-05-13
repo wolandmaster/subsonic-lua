@@ -103,22 +103,24 @@ end
 
 function send_xml(xml, status)
 	local xml = xml or ""
-	status = status or "ok"
-	log.debug("send xml:", xml)
-	io.write(http_200_ok("application/xml")
-	.. '<?xml version="1.0" encoding="UTF-8"?>\r\n'
-	.. '<subsonic-response status="' .. status .. '" version="'
-	.. SUBSONIC_API_VERSION .. '">' .. xml .. '</subsonic-response>')
+	local status = status or "ok"
+	local resp = '<?xml version="1.0" encoding="UTF-8"?>\r\n'
+		.. '<subsonic-response status="' .. status .. '" version="'
+		.. SUBSONIC_API_VERSION .. '">' .. xml .. '</subsonic-response>'
+	log.info("send xml:", resp)
+	io.write(http_200_ok("application/xml",
+		{ "Content-Length: " .. #resp }) .. resp)
 	io.flush()
 end
 
 function send_json(json, status)
 	local json = (json and json ~= "") and "," .. json or ""
-	status = status or "ok"
-	log.debug("send json:", json)
-	io.write(http_200_ok("application/json")
-	.. '{"subsonic-response":{"status":"' .. status .. '","version":"'
-	.. SUBSONIC_API_VERSION .. '"' .. json .. '}}')
+	local status = status or "ok"
+	local resp = '{"subsonic-response":{"status":"' .. status .. '","version":"'
+		.. SUBSONIC_API_VERSION .. '"' .. json .. '}}'
+	log.info("send json:", resp)
+	io.write(http_200_ok("application/json",
+		{ "Content-Length: " .. #resp }) .. resp)
 	io.flush()
 end
 
@@ -134,25 +136,41 @@ end
 
 function send_binary(data, content_type)
 	local content_type = content_type or "application/octet-stream"
-	log.debug("send", content_type, "with size:", #data)
-	io.write(http_200_ok(content_type) .. data)
+	log.info("send", content_type, "with size:", #data)
+	io.write(http_200_ok(content_type,
+		{ "Content-Length: " .. #data }) .. data)
 	io.flush()
 end
 
-function send_file(...)
+function send_file(qs, ...)
 	local file = fs.join_path(...)
 	local fh = nixio.open(file, 'r')
-	log.debug("send file:", file)
+	log.info("send file:", file)
+
 	-- uhttpd always sends chunked transfer encoding header
+	-- and music stash tries to read chunked data
 	local server_software = nixio.getenv("SERVER_SOFTWARE") or ""
-	local headers = (server_software:lower() ~= "uhttpd")
-		and { "Transfer-Encoding: chunked" } or {}
-	io.write(http_200_ok(metadata.content_type(file), headers))
+	local client_software = qs.c or ""
+	local stacked = server_software:lower() == "uhttpd"
+		and client_software:lower() == "musicstash"
+	if stacked then
+		log.debug("send stacked begin")
+		io.write(http_200_ok(metadata.content_type(file)))
+		io.write(string.format("%X", fh:stat("size")) .. "\r\n")
+	else
+		io.write(http_200_ok(metadata.content_type(file),
+			{ "Content-Length: " .. fh:stat("size") }))
+	end
+
 	repeat
 		local buf = fh:read(2^13)	-- 8k
-		io.write(string.format("%X", #buf)
-		.. "\r\n" .. buf .. "\r\n")
+		io.write(buf)
 	until (buf == "")
+
+	if stacked then
+		io.write("\r\n0\r\n\r\n")
+		log.debug("send stacked end")
+	end
 	io.flush()
 	fh:close()
 	log.debug("file sent (" .. file .. ")")

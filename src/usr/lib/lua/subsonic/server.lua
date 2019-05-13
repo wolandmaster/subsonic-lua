@@ -17,7 +17,15 @@ local function get_query_string()
 	local qs = {}
 	local query_string = os.getenv("QUERY_STRING")
 	for key, value in query_string:gmatch("([^&=]+)=([^&=]*)&?") do
-		qs[url_decode(key)] = tostring(url_decode(value))
+		if qs[key] then
+			if type(qs[key]) ~= "table" then
+				local prev_value = qs[key]
+				qs[key] = { prev_value }
+			end
+			table.insert(qs[key], tostring(url_decode(value)))
+		else
+			qs[key] = tostring(url_decode(value))
+		end
 	end
 	return qs
 end

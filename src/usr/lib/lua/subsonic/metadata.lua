@@ -46,10 +46,7 @@ function read(...)
 	local metadata = {}
 	local extension = fs.extension(path)
 	if extension == "mp3" then
-		-- mpeg_info = mpeg(path):read()
-		id3_info = id3(path):read()
-
-		-- metadata.bitrate = mpeg_info.bitrate
+		local id3_info = id3(path):read()
 		metadata.title = id3_info.TIT2
 		metadata.artist = id3_info.TPE2 or id3_info.TPE1
 		metadata.album = id3_info.TALB
@@ -60,6 +57,9 @@ function read(...)
 				or id3_info.TRCK
 		end
 		metadata.genre = id3_info.TCON
+		
+		local mpeg_info = mpeg(path):read()
+		metadata.bitrate = mpeg_info.bitrate
 	end
 	return metadata
 end

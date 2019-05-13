@@ -46,6 +46,44 @@ setmetatable(mpeg, {
 	end,
 })
 
+local function read_byte(fd, count)
+	count = count or 1
+	return string.byte(fd:read(count), 1, count)
+end
+
+local function read_bit(num, from, to)
+	to = to or from
+	return band(rshift(num, 32 - to), lshift(1, to - from + 1) - 1)
+end
+
+local function read_synchsafe_int(fd)
+	local b1, b2, b3, b4 = string.byte(fd:read(4), 1, 4)
+	return bor(lshift(b1, 21), lshift(b2, 14), lshift(b3, 7), b4)
+end
+
+local function distinct(array)
+	local distinct_hash = {}
+	for _, value in ipairs(array) do
+		distinct_hash[value] = true
+	end
+	local distinct_array = {}
+	for key, _ in pairs(distinct_hash) do
+		table.insert(distinct_array, key)
+	end
+	return distinct_array
+end
+
+local function sum(array)
+	local array_sum = 0
+	for _, value in ipairs(array) do
+		array_sum = array_sum + value
+	end
+	return array_sum
+end
+
+-------------------------
+-- P U B L I C   A P I --
+-------------------------
 function mpeg.new(file)
 	local self = setmetatable({}, mpeg)
 	self.file = file
@@ -119,43 +157,6 @@ function mpeg.read(self)
 	end
 	header.bitrates = nil
 	return header
-end
-
---[[ P R I V A T E ]]--
-
-function read_byte(fd, count)
-	count = count or 1
-	return string.byte(fd:read(count), 1, count)
-end
-
-function read_bit(num, from, to)
-	to = to or from
-	return band(rshift(num, 32 - to), lshift(1, to - from + 1) - 1)
-end
-
-function read_synchsafe_int(fd)
-	local b1, b2, b3, b4 = string.byte(fd:read(4), 1, 4)
-	return bor(lshift(b1, 21), lshift(b2, 14), lshift(b3, 7), b4)
-end
-
-function distinct(array)
-	local distinct_hash = {}
-	for _, value in ipairs(array) do
-		distinct_hash[value] = true
-	end
-	local distinct_array = {}
-	for key, _ in pairs(distinct_hash) do
-		table.insert(distinct_array, key)
-	end
-	return distinct_array
-end
-
-function sum(array)
-	local array_sum = 0
-	for _, value in ipairs(array) do
-		array_sum = array_sum + value
-	end
-	return array_sum
 end
 
 return mpeg

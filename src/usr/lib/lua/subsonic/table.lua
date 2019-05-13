@@ -74,6 +74,16 @@ function table.clone(array)
 	return { unpack(array) }
 end
 
+function table.merge(...)
+	local merged = {}
+	for _, array in ipairs({...}) do
+		for key, value in pairs(array) do
+			merged[key] = value
+		end
+	end
+	return merged
+end
+
 function table.dump(entry)
 	if type(entry) == "table" then
 		local str = "{"

@@ -15,7 +15,7 @@ local metadata = require "subsonic.metadata"
 local database = require "subsonic.db"
 
 local table, ipairs, pairs, next = table, ipairs, pairs, next
-local os, tonumber, tostring = os, tonumber, tostring
+local tonumber, tostring = tonumber, tostring
 
 module "subsonic.rest"
 
@@ -30,13 +30,13 @@ local function build_song_child(song)
 		suffix = fs.extension(song.path),
 		contentType = metadata.content_type(song.path),
 		track = song.track,
-		coverArt = tostring(song.music_directory_id)
-		-- album =
-		-- artist =
-		-- bitRate =
+		coverArt = tostring(song.music_directory_id),
+		album = song.album_name,
+		artist = song.artist_name,
+		year = song.year,
+		genre = song.genre,
+		bitRate = song.bitrate
 		-- duration =
-		-- genre =
-		-- year =
 	}
 end
 
@@ -66,22 +66,26 @@ function get_music_folders(qs)
 end
 
 function get_indexes(qs)
-	local modified_since = tonumber(qs.ifModifiedSince) or 0
-	local music_folder_id = tonumber(qs.musicFolderId) or 0
+	-- local modified_since = tonumber(qs.ifModifiedSince) or 0
+	local modified_since = 0
+	local music_folder_id = tonumber(qs.musicFolderId) or nil
 
 	local db = database(config.db())
 	local artist_filter = {
-		parent_id = 0, mtime = { ">", modified_since }
+		music_folder_id = music_folder_id,
+		parent_id = 0,
+		mtime = { ">", modified_since }
 	}
 	local song_filter = {
-		music_directory_id = 0, mtime = { ">", modified_since }
+		["song.music_folder_id"] = music_folder_id,
+		["song.music_directory_id"] = 0,
+		["song.mtime"] = { ">", modified_since }
 	}
-	if music_folder_id ~= 0 then
-		artist_filter.music_folder_id = music_folder_id
-		song_filter.music_folder_id = music_folder_id
-	end
 	local artists = db:query("select * from music_directory", artist_filter)
-	local songs = db:query("select * from song", song_filter)
+	local songs = db:query("select song.*, "
+		.. "album.name as album_name, artist.name as artist_name from song "
+		.. "left join album on song.album_id = album.id "
+		.. "left join artist on album.artist_id = artist.id", song_filter)
 	db:close()
 
 	if next(artists) == nil and next(songs) == nil then
@@ -125,8 +129,11 @@ function get_music_directory(qs)
 		{ id = tonumber(qs.id) })
 	local subfolders = db:query("select * from music_directory",
 		{ parent_id = tonumber(qs.id) })
-	local songs = db:query("select * from song",
-		{ music_directory_id = tonumber(qs.id) })
+	local songs = db:query("select song.*, "
+		.. "album.name as album_name, artist.name as artist_name from song "
+		.. "left join album on song.album_id = album.id "
+		.. "left join artist on album.artist_id = artist.id",
+		{ ["song.music_directory_id"] = tonumber(qs.id) })
 	db:close()
 
 	local resp = { directory = {
@@ -160,19 +167,22 @@ function stream(qs)
 	local song = db:query_first("select * from song", { id = tonumber(qs.id) })
 	local music_folder = config.music_folders()[song.music_folder_id]
 	db:close()
-	response.send_file(music_folder.path, song.path)
+	response.send_file(qs, music_folder.path, song.path)
 end
 
 function get_cover_art(qs)
 	local db = database(config.db())
-	local covers = table.map(db:query("select * from cover",
-		{ music_directory_id = tonumber(qs.id) }), function(cover)
-		return cover, cover.dimension
-	end)
+	local cover = db:query_first("select * from cover", {
+		music_directory_id = tonumber(qs.id),
+		dimension = qs.size and tonumber(qs.size) or 0
+	})
+	if not cover then
+		cover = db:query_first("select * from cover", {
+			music_directory_id = tonumber(qs.id), dimension = 0
+		})
+	end
 	db:close()
-	log.debug("covers:", covers)
-	if next(covers) ~= nil then
-		local cover = covers[tonumber(qs.size)] or covers[0]
+	if cover then
 		response.send_binary(cover.image,
 			metadata.content_type(config.cover_file()))
 	end
@@ -202,9 +212,9 @@ function get_random_songs(qs)
 	response.send(resp, qs)
 end
 
--- type: random, newest, highest, recent, frequent
---	   alphabeticalByName, alphabeticalByArtist
---	   starred, byYear, byGenre
+-- type:
+-- random, newest, highest, recent, frequent, starred
+-- alphabeticalByName, alphabeticalByArtist, byYear, byGenre
 function get_album_list(qs)
 	local sort = ""
 	if not qs.type or qs.type == "random" then
@@ -212,20 +222,18 @@ function get_album_list(qs)
 	elseif qs.type == "newest" then
 		sort = " order by mtime desc"
 	end
-	local limit = qs.size and tonumber(qs.size) or 10
-	local offset = qs.offset and tonumber(qs.offset) or 0
+	local limit = qs.size and " limit " .. qs.size or " limit 10"
+	local offset = qs.offset and " offset " .. qs.offset or " offset 0"
 	local from_year = ""	-- TODO
 	local to_year = ""		-- TODO
 	local genre = ""		-- TODO
-	local music_folder = qs.musicFolderId and " where music_folder_id = "
-		.. qs.musicFolderId or ""
+	local music_folder = qs.musicFolderId
+		and " where music_folder_id = " .. qs.musicFolderId or ""
 
 	local db = database(config.db())
 	local folders = db:query("select * from music_directory"
-		.. " where parent_id != 0" .. music_folder
-		.. from_year .. to_year .. genre .. sort
-		.. " limit " .. limit .. " offset " .. offset
-	)
+		.. " where parent_id != 0" .. music_folder .. genre
+		.. from_year .. to_year .. sort .. limit .. offset)
 	db:close()
 
 	local resp = { albumList = {} }
@@ -241,8 +249,18 @@ function get_album_list(qs)
 	response.send(resp, qs)
 end
 
-function get_album_list_2(qs)
+function create_playlist(qs)
+	log.debug(qs)
+	response.send({}, qs)
+end
 
+function playlists(qs)
+end
+
+function playlist(qs)
+end
+
+function get_album_list_2(qs)
 end
 
 function scrobble(qs)

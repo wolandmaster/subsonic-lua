@@ -30,18 +30,20 @@ local function test_server(method, query)
 end
 
 local function xml_200_ok(msg)
-	return response.http_200_ok("application/xml")
-	.. '<?xml version="1.0" encoding="UTF-8"?>\r\n'
+	local resp = '<?xml version="1.0" encoding="UTF-8"?>\r\n'
 	.. '<subsonic-response status="ok" version="'
 	.. response.subsonic_api_version() .. '">'
 	.. (msg or "") .. '</subsonic-response>'
+	return response.http_200_ok("application/xml",
+		{ "Content-Length: " .. #resp }) .. resp
 end
 
 local function json_200_ok(msg)
 	local msg = (msg  and msg ~= "") and "," .. msg or ""
-	return response.http_200_ok("application/json")
-	.. '{"subsonic-response":{"status":"ok","version":"'
+	local resp = '{"subsonic-response":{"status":"ok","version":"'
 	.. response.subsonic_api_version() .. '"' .. (msg or "") .. '}}'
+	return response.http_200_ok("application/json",
+		{ "Content-Length: " .. #resp }) .. resp
 end
 
 local function assert_equals(id, actual, expected)
@@ -82,6 +84,7 @@ config.set_db('test/resources/subsonic.db')
 config.set_music_folders({
 	{ name = 'Music', enabled = '1' }
 })
+config.set_log_level("debug")
 assert_equals("get indexes xml", test_server("getIndexes", "&musicFolderId=1"),
 	xml_200_ok('<indexes lastModified="1555571361">'
 	.. '<index name="A">'
@@ -112,4 +115,12 @@ assert_equals("get music directory xml 2", test_server("getMusicDirectory",
 	.. ' parent="1" path="Artist/Song2.mp3" size="0" suffix="mp3"'
 	.. ' title="Song2"/>'
 	.. '</directory>'))
+
+
+-- nixio.setenv("SERVER_SOFTWARE", "uhttpd")
+-- config.set_db('test/resources/subsonic.db')
+-- config.set_music_folders({ { name = 'Music', enabled = '1',
+	-- path = 'test/media' } })
+-- config.set_log_level("debug")
+-- assert_equals("1", test_server("stream", "&id=1&c=musicstash&f=json"), "")
 
